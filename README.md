@@ -14,19 +14,35 @@
 
 Food pairing is...
 
+
+First, we'll need a database of flavor compounds in each kind of food ingredient. Several databases concerning food exist, such as [FoodDB](http://foodb.ca/), [FlavorNet](http://www.flavornet.org/), and [FlavorDB](https://www.ncbi.nlm.nih.gov/pubmed/29059383), but not all associate foods with the compounds they contain. The one at FlavorDB does, so we can scrape our data from the FlavorDB [website](https://cosylab.iiitd.edu.in/flavordb/).
+
+Once we have the data, we'll need it in a form that we can easily manipulate. [``Pandas DataFrames``](https://pandas.pydata.org/pandas-docs/version/0.23.4/generated/pandas.DataFrame.html) are a good choice - they're effectively small databases that we can access and manipulate with the power of Python's other libraries, and without the need for a SQL-like syntax.
+
+Then, we'll be able to run all sorts of nice data visualizations and analysis methods on our ``DataFrames``.
+
 # Acquiring Data
 
-First, we'll need a database of flavor compounds in each kind of food ingredient.
+First things first - how do we go about scraping the data from FlavorDB?
 
-Several databases exist, such as [FoodDB](http://foodb.ca/), [FlavorNet](http://www.flavornet.org/), and [FlavorDB](https://www.ncbi.nlm.nih.gov/pubmed/29059383), but not all associate foods with the compounds they contain. The one at FlavorDB does, so we scrape our data from the FlavorDB [website](https://cosylab.iiitd.edu.in/flavordb/) to generate [Pandas DataFrames](https://pandas.pydata.org/pandas-docs/version/0.23.4/generated/pandas.DataFrame.html).
+The general steps to data scraping are:
+1. **Download** the JSON files which describe the chemical makeup of the food.
+    - **Find** the URLs which have the JSON files.
+    - **Iterate** over the URLs that have these JSON files, and download the data in them.
+2. **Process** the JSON data by converting it into a Pandas ``Dataframe``.
+3. **Clean** the ``DataFrame``.
 
-The data at FlavorDB is scattered across JSON files on the site, where each JSON file corresponds to a particular food and the flavor molecules in it. Fortunately, the files each have a numerical id, so we can grab the JSON files by iterating over URLs of the right form.
+## Steps 1-2: JSON Files
+
+A quick inspection of the FlavorDB website reveals that all of the JSON files we want are at https://cosylab.iiitd.edu.in/flavordb/entities_json?id=x, where ``x`` an integer. Then it's a cinch to write a few functions which go to those addresses and converts those JSON files into dictionaries. 
 
 
 ```python
 # import the relevant Python packages
 import urllib.request
 import json
+
+import time
 
 import numpy as np
 import pandas as pd
@@ -39,18 +55,20 @@ import math
 def flavordb_entity_url(x):
     return "https://cosylab.iiitd.edu.in/flavordb/entities_json?id="+str(x)
 
+
 # translates the JSON file at the specified web address into a dictionary
 def get_flavordb_entity(x):
+    # source: https://stackoverflow.com/questions/12965203/how-to-get-json-from-webpage-into-python-script
     with urllib.request.urlopen(flavordb_entity_url(x)) as url:
         return json.loads(url.read().decode())
     return None
 ```
 
-Then, we convert the JSON files into ``DataFrames``.
+Those dictionaries contain a lot of unnecessary information, which is why we need to specify what fields we want (and, for ease of use, what we want to rename them to).
 
 
 ```python
-# the names of the columns in the raw JSON objects
+# the names of the "columns" in the raw JSON objects
 def flavordb_entity_cols():
     return [
         'entity_id', 'entity_alias_readable', 'entity_alias_synonyms',
@@ -58,7 +76,7 @@ def flavordb_entity_cols():
     ]
 
 
-# define the names of the columns in the dataframes we want to generate
+# what we want to rename the JSON object "columns" to
 def flavordb_df_cols():
     return [
         'entity id', 'alias', 'synonyms',
@@ -66,22 +84,43 @@ def flavordb_df_cols():
     ]
 
 
+# "subcolumns" in the "molecules" column that we are interested in
 def molecules_df_cols():
     return ['pubchem id', 'common name', 'flavor profile']    
 ```
 
+## Steps 3-4: Downloading & Cleaning
+
+We still haven't actually wrote anything that executes - just a bunch of definitions. Right now, we need to define a bunch of stuff as setup. Then, when we download the JSON data later, we can immediately pipeline it through processing and cleaning.
+
+The end goal is to have the data in a consistent, easy to access format. That means that I want two databases, one associating foods with food compounds, and another associating food compounds with flavors. The database columns should have the following types:
+* 'entity id' and 'pubchem id' to be type ``int``
+* 'alias', 'scientific name', 'category', and 'common name' to be type ``str``
+* 'synonyms' and 'flavor profile' should be type ``set(str)``
+* 'molecules' should be a ``set(int)``
+
+When these columns are initially downloaded, some of them, such as 'scientific name', have mixed types - they have both strings and some other value (in this case, ``NaN``). Fortunately, not too many columns have mixed types. In particular, (if you do some preliminary work and examine the JSON files,) the columns 'entity id', 'pubchem id', and 'common name' don't require type checking, so we don't have to process those at all.
+
+The other small thing that do here is call ``str.lower()`` on all of the strings, just so it's easier to type and it can match other recipes more easily.
+
 
 ```python
 def clean_flavordb_dataframes(flavor_df, molecules_df):
+    """
+    Helps ensure consistent intra-column typing and converts all strings to lowercase.
+    """
+    
     strtype = type('')
     settype = type(set())
     
+    # ensuring that these columns have type str
     for k in ['alias', 'scientific name', 'category']:
         flavor_df[k] = [
             elem.lower() if isinstance(elem, strtype) else ''
             for elem in flavor_df[k]
         ]
     
+    # ensuring that these columns are always a set of str
     flavor_df['synonyms'] = [
         elem if isinstance(elem, settype) else (
             set(elem.lower().split(', ') if isinstance(elem, strtype) else [''])
@@ -97,10 +136,17 @@ def clean_flavordb_dataframes(flavor_df, molecules_df):
     return flavor_df, molecules_df
 ```
 
+This is where most of the work is done. ``get_flavordb_dataframes()`` is the code that ties together all three steps of data scraping: **downloading**, **processing**, and **cleaning**. It even handles errors, for when a JSON page is missing.
+
 
 ```python
 # generate dataframes from some of the JSON objects
 def get_flavordb_dataframes(start, end):
+    """
+    Download JSON data, converts it to DataFrames, and cleans them.
+    
+    Returns DataFrames for both foods and molecules, as well as missing JSON entries.
+    """
     # make intermediate values to make dataframes from
     flavordb_data = []
     molecules_dict = {}
@@ -109,18 +155,19 @@ def get_flavordb_dataframes(start, end):
     flavordb_cols = flavordb_entity_cols()
     
     for i in range(start, end):
-        # get the ith food entity, as a JSON dict
+        # we use a try-except here because some of the JSON pages are missing
         try:
+            # 1: Find the JSON file. Gets the ith food entity, as a JSON dict
             fdbe = get_flavordb_entity(i + 1)
 
             # get only the relevant fields (columns) of the dict
             flavordb_series = [fdbe[k] for k in flavordb_cols[:-1]]
-            flavordb_series.append(
+            flavordb_series.append( # convert the field to a set
                 set([m['pubchem_id'] for m in fdbe['molecules']])
             )
             flavordb_data.append(flavordb_series)
 
-            # update the molecules database with the data in 'molecules' field
+            # update the molecules dataframe with the data in 'molecules' field
             for m in fdbe['molecules']:
                 if m['pubchem_id'] not in molecules_dict:
                     molecules_dict[m['pubchem_id']] = [
@@ -135,7 +182,6 @@ def get_flavordb_dataframes(start, end):
                     'Error while fetching JSON object from ' + flavordb_entity_url(x)
                 ) from e
             
-
     # generate the dataframes
     flavordb_df = pd.DataFrame(
         flavordb_data,
@@ -155,23 +201,27 @@ def get_flavordb_dataframes(start, end):
     return [flavordb_df, molecules_df, missing]
 ```
 
-It takes a while to download all of these JSON files, so make sure to save your download progress!
+It takes a long time to download all of these JSON files. If the code somehow crashes, we'll lose all of our download progress in a few short seconds. Therefore, it's a good idea to save the download progress.
 
 
 ```python
 # updates & saves the download progress of your dataframes
 def update_flavordb_dataframes(df0, df1, ranges):
+    """
+    Adds more data to the specified DataFrames, and saves them as CSV files.
+    
+    If successful, returns the specified DataFrames, now updated, and any missing JSON files.
+    """
     df0_old = df0
     df1_old = df1
     missing_old = []
 
     # time how long it took to download the files
-    import time
     start = time.time()
-
-    # save the download progress in increments of 50 JSON files
+    
+    # for each range in ranges, save your progress.
+    # don't continue with the program unless everything succeeds!
     try:
-        # as of today, it looks like FlavorDB has about 1000 distinct entities
         for a, b in ranges:
             df0_new, df1_new, missing_new = get_flavordb_dataframes(a, b)
             
@@ -192,23 +242,29 @@ def update_flavordb_dataframes(df0, df1, ranges):
         print('Downloading took: '+ str(mins) + ' minutes')
 ```
 
+As of today, it looks like FlavorDB has about 1,000 distinct foods (entities). We'll get the first 1,000 foods we find, and save our progress about every 50 or so foods downloaded.
+
 
 ```python
 # take new dataframes
 df0 = pd.DataFrame(columns=flavordb_df_cols())
 df1 = pd.DataFrame(columns=molecules_df_cols())
-# fill them with JSON files up to id = 1000
+
+# fill the DataFrames with JSON files up to id = 1000
 ranges = [(50 * i, 50 * (i + 1)) for i in range(20)]
 # update & save the dataframes as csv files
 update_flavordb_dataframes(df0, df1, ranges)
 ```
 
-While downloading the JSON files, you'll notice that some of them are missing due to ``HTTPError``s. The first time you download, you might, say, notice that 43 entries are missing.
+Creating a DataFrame from a CSV file is a lot faster than downloading and creating one from the internet. In a perfect world, we wouldn't need to, but in the interest of saving time, I've made these methods so that I don't need to redownload the ``DataFrames`` every time I make an edit to the code. They load the ``DataFrame``s from CSV files and recover the information about what JSON IDs are missing.
 
 
 ```python
 # get the missing entries
 def missing_entity_ids(flavor_df):
+    """
+    Get the IDs of the missing JSON entries for this particular food DataFrame.
+    """
     out = []
     entity_id_set = set(flavor_df['entity id'])
     for i in range(1, 1 + max(entity_id_set)):
@@ -233,13 +289,15 @@ def load_db():
     return df0, df1, missing_entity_ids(df0)
 ```
 
+Okay, now we can finally display a few rows of our ``DataFrame``s.
+
 
 ```python
 # missing_ids = the missing ids that are less than the max one found
 flavor_df, molecules_df, missing_ids = load_db()
 flavor_df.to_csv('flavordb.csv')
 molecules_df.to_csv('molecules.csv')
-flavor_df
+flavor_df.head()
 ```
 
 
@@ -317,520 +375,15 @@ flavor_df
       <td>bakery</td>
       <td>{7361, 994, 7362, 10883, 11173, 5365891, 11559...</td>
     </tr>
-    <tr>
-      <th>5</th>
-      <td>6</td>
-      <td>wholewheat bread</td>
-      <td>{wholewheat bread}</td>
-      <td>wheat</td>
-      <td>bakery</td>
-      <td>{107905, 8194, 10883, 13187, 5283329, 5283335,...</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>7</td>
-      <td>wort</td>
-      <td>{wort}</td>
-      <td>barley</td>
-      <td>beverage</td>
-      <td>{13187, 9862, 135, 18827, 7824, 61712, 19602, ...</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>8</td>
-      <td>arrack</td>
-      <td>{arak}</td>
-      <td>grape</td>
-      <td>beverage alcoholic</td>
-      <td>{1031, 240, 31249, 6584, 7997}</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>9</td>
-      <td>beer</td>
-      <td>{beer}</td>
-      <td>poacceae</td>
-      <td>beverage alcoholic</td>
-      <td>{229888, 62465, 8194, 8193, 1031, 644104, 5283...</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>10</td>
-      <td>bantu beer</td>
-      <td>{pombe, millet beer, malwa, kaffir beer, opaqu...</td>
-      <td>eragrostideae</td>
-      <td>beverage alcoholic</td>
-      <td>{6560, 8038, 7654, 7147, 1068, 14286, 527, 240...</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>11</td>
-      <td>brandy</td>
-      <td>{ kanyak, armagnac, konyak , pisco, cognac, st...</td>
-      <td>vitis vinifera</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 8468, 1049, 531804...</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>12</td>
-      <td>anise brandy</td>
-      <td>{brandy}</td>
-      <td>anise</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 1031, 8468, 1049, ...</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>13</td>
-      <td>apple brandy</td>
-      <td>{anise brandy}</td>
-      <td>apple</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 10885, 9862, 263, 1031, 8073, 5364231,...</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>14</td>
-      <td>armagnac brandy</td>
-      <td>{armanac brandy}</td>
-      <td>vitis vinifera</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 1031, 8468, 1049, ...</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>15</td>
-      <td>blackberry brandy</td>
-      <td>{brackberry brandy}</td>
-      <td>blackberry</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 8468, 1049, 531804...</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>16</td>
-      <td>cherry brandy</td>
-      <td>{cherry brandy}</td>
-      <td>prunus</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 31249, 8468, 1049,...</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>17</td>
-      <td>cognac brandy</td>
-      <td>{cognac brandy}</td>
-      <td>vitis</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 12293, 1031, 5283335, 5364231, 31242, ...</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>18</td>
-      <td>papaya brandy</td>
-      <td>{papaya brandy}</td>
-      <td>papaya</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 8468, 1049, 531804...</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>19</td>
-      <td>pear brandy</td>
-      <td>{poire williams, rakia, pear brandy, tuica, pa...</td>
-      <td>pear</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 1031, 5281162, 528...</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>20</td>
-      <td>plum brandy</td>
-      <td>{slivovitz, ljivovica, schlivowitz, plum brand...</td>
-      <td>damson</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 1031, 527, 31249, ...</td>
-    </tr>
-    <tr>
-      <th>20</th>
-      <td>21</td>
-      <td>raspberry brandy</td>
-      <td>{raspberry brandy}</td>
-      <td>rubus idaeus</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 8468, 1049, 531804...</td>
-    </tr>
-    <tr>
-      <th>21</th>
-      <td>22</td>
-      <td>weinbrand brandy</td>
-      <td>{weinbrand brandy}</td>
-      <td>vitis vinifera</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 5364231, 263, 8073, 8468, 1049, 531804...</td>
-    </tr>
-    <tr>
-      <th>22</th>
-      <td>23</td>
-      <td>gin</td>
-      <td>{gin}</td>
-      <td>juniperus communis</td>
-      <td>beverage alcoholic</td>
-      <td>{6560, 7460, 8294, 8103, 644104, 1031, 1130, 6...</td>
-    </tr>
-    <tr>
-      <th>23</th>
-      <td>24</td>
-      <td>rum</td>
-      <td>{rum}</td>
-      <td>saccharum</td>
-      <td>beverage alcoholic</td>
-      <td>{229888, 62465, 8194, 31234, 229377, 12293, 10...</td>
-    </tr>
-    <tr>
-      <th>24</th>
-      <td>25</td>
-      <td>whisky</td>
-      <td>{whisky}</td>
-      <td>maize</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 8193, 12293, 644104, 1032, 31242, 527,...</td>
-    </tr>
-    <tr>
-      <th>25</th>
-      <td>26</td>
-      <td>bourbon whisky</td>
-      <td>{bourbon whisky}</td>
-      <td>corn</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 8193, 12293, 1031, 1032, 31242, 527, 3...</td>
-    </tr>
-    <tr>
-      <th>26</th>
-      <td>27</td>
-      <td>canadian whisky</td>
-      <td>{canadian whisky}</td>
-      <td>corn</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 8193, 12293, 1032, 31242, 527, 31249, ...</td>
-    </tr>
-    <tr>
-      <th>27</th>
-      <td>28</td>
-      <td>finnish whisky</td>
-      <td>{finnish whisky}</td>
-      <td>maize</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 8193, 12293, 1032, 31242, 527, 31249, ...</td>
-    </tr>
-    <tr>
-      <th>28</th>
-      <td>29</td>
-      <td>japanese whisky</td>
-      <td>{japanese whisky}</td>
-      <td>maize</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 8193, 12293, 1032, 31242, 527, 31249, ...</td>
-    </tr>
-    <tr>
-      <th>29</th>
-      <td>30</td>
-      <td>malt whisky</td>
-      <td>{malt whisky}</td>
-      <td>maize</td>
-      <td>beverage alcoholic</td>
-      <td>{62465, 8193, 12293, 1031, 1032, 31242, 85519,...</td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-    </tr>
-    <tr>
-      <th>905</th>
-      <td>942</td>
-      <td>horchata</td>
-      <td>{orxata }</td>
-      <td></td>
-      <td>beverage</td>
-      <td>{644104, 1130, 8094}</td>
-    </tr>
-    <tr>
-      <th>906</th>
-      <td>943</td>
-      <td>soft drink</td>
-      <td>{}</td>
-      <td></td>
-      <td>beverage</td>
-      <td>{644104, 1130, 247, 6202, 8094}</td>
-    </tr>
-    <tr>
-      <th>907</th>
-      <td>944</td>
-      <td>milkshake</td>
-      <td>{}</td>
-      <td></td>
-      <td>beverage</td>
-      <td>{644104, 1130, 8094, 247}</td>
-    </tr>
-    <tr>
-      <th>908</th>
-      <td>945</td>
-      <td>chocolate mousse</td>
-      <td>{}</td>
-      <td>theobroma</td>
-      <td>bakery</td>
-      <td>{644104, 1130, 8094}</td>
-    </tr>
-    <tr>
-      <th>909</th>
-      <td>947</td>
-      <td>pupusa</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{1130, 8094, 247}</td>
-    </tr>
-    <tr>
-      <th>910</th>
-      <td>948</td>
-      <td>empanada</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{1130, 8094}</td>
-    </tr>
-    <tr>
-      <th>911</th>
-      <td>949</td>
-      <td>arepa</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{1130, 8094, 247}</td>
-    </tr>
-    <tr>
-      <th>912</th>
-      <td>950</td>
-      <td>ascidians</td>
-      <td>{sea squirts, ascidians}</td>
-      <td>tunicate</td>
-      <td>seafood</td>
-      <td>{644104, 1130}</td>
-    </tr>
-    <tr>
-      <th>913</th>
-      <td>951</td>
-      <td>gefilte fish</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{644104, 1130}</td>
-    </tr>
-    <tr>
-      <th>914</th>
-      <td>952</td>
-      <td>yellow pond lily</td>
-      <td>{brandy bottle}</td>
-      <td>nuphar</td>
-      <td>plant</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 439341...</td>
-    </tr>
-    <tr>
-      <th>915</th>
-      <td>953</td>
-      <td>fish burger</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{644104, 1130}</td>
-    </tr>
-    <tr>
-      <th>916</th>
-      <td>954</td>
-      <td>other dish</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{644104, 1130, 247, 6202, 8094}</td>
-    </tr>
-    <tr>
-      <th>917</th>
-      <td>955</td>
-      <td>pot pie</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{644104, 1130, 8094, 247}</td>
-    </tr>
-    <tr>
-      <th>918</th>
-      <td>956</td>
-      <td>stuffing</td>
-      <td>{}</td>
-      <td></td>
-      <td>additive</td>
-      <td>{644104, 1130, 8094, 247}</td>
-    </tr>
-    <tr>
-      <th>919</th>
-      <td>958</td>
-      <td>fudge</td>
-      <td>{}</td>
-      <td>cattle</td>
-      <td>bakery</td>
-      <td>{644104, 1130, 8094}</td>
-    </tr>
-    <tr>
-      <th>920</th>
-      <td>959</td>
-      <td>candy bar</td>
-      <td>{}</td>
-      <td>theobroma</td>
-      <td>bakery</td>
-      <td>{644104, 1130, 8094, 247}</td>
-    </tr>
-    <tr>
-      <th>921</th>
-      <td>960</td>
-      <td>condensed milk</td>
-      <td>{}</td>
-      <td>cattle</td>
-      <td>dairy</td>
-      <td>{644104, 1130}</td>
-    </tr>
-    <tr>
-      <th>922</th>
-      <td>961</td>
-      <td>margarine</td>
-      <td>{}</td>
-      <td>vegetable oil</td>
-      <td>additive</td>
-      <td>{644104, 1130, 6202, 8094}</td>
-    </tr>
-    <tr>
-      <th>923</th>
-      <td>962</td>
-      <td>margarine like spread</td>
-      <td>{}</td>
-      <td></td>
-      <td>additive</td>
-      <td>{644104, 1130, 247, 6202, 8094}</td>
-    </tr>
-    <tr>
-      <th>924</th>
-      <td>963</td>
-      <td>hummus</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{644104, 1130, 8094}</td>
-    </tr>
-    <tr>
-      <th>925</th>
-      <td>964</td>
-      <td>potato puffs</td>
-      <td>{}</td>
-      <td></td>
-      <td>dish</td>
-      <td>{644104, 1130, 8094, 247}</td>
-    </tr>
-    <tr>
-      <th>926</th>
-      <td>965</td>
-      <td>potato gratin</td>
-      <td>{}</td>
-      <td>potato</td>
-      <td>dish</td>
-      <td>{644104, 1130}</td>
-    </tr>
-    <tr>
-      <th>927</th>
-      <td>967</td>
-      <td>chinese bayberry</td>
-      <td>{chinese strawberry, mountain peach, yamamomo,...</td>
-      <td>myrica</td>
-      <td>berry</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 439341...</td>
-    </tr>
-    <tr>
-      <th>928</th>
-      <td>968</td>
-      <td>green zucchini</td>
-      <td>{courgette}</td>
-      <td>cucurbita_pepo</td>
-      <td>vegetable</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 65064,...</td>
-    </tr>
-    <tr>
-      <th>929</th>
-      <td>969</td>
-      <td>yellow zucchini</td>
-      <td>{yellow zucchini}</td>
-      <td>cucurbita_pepo</td>
-      <td>vegetable</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 65064,...</td>
-    </tr>
-    <tr>
-      <th>930</th>
-      <td>970</td>
-      <td>saskatoon berry</td>
-      <td>{alder-leaf shadbush, chuckley pear, western j...</td>
-      <td>amelanchier</td>
-      <td>berry</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 439341...</td>
-    </tr>
-    <tr>
-      <th>931</th>
-      <td>971</td>
-      <td>nanking cherry</td>
-      <td>{shanghai cherry, mountain cherry, chinese bus...</td>
-      <td>prunus cerasus</td>
-      <td>berry</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 439341...</td>
-    </tr>
-    <tr>
-      <th>932</th>
-      <td>972</td>
-      <td>japanese pumpkin</td>
-      <td>{japanese pumpkin, kabocha}</td>
-      <td>winter squash</td>
-      <td>fruit</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 439341...</td>
-    </tr>
-    <tr>
-      <th>933</th>
-      <td>977</td>
-      <td>guinea hen</td>
-      <td>{guinea fowl, original fowl, pet speckled hen}</td>
-      <td>galliformes</td>
-      <td>meat</td>
-      <td>{644104, 1130}</td>
-    </tr>
-    <tr>
-      <th>934</th>
-      <td>978</td>
-      <td>cucurbita</td>
-      <td>{cucurbita}</td>
-      <td>cucurbita</td>
-      <td>gourd</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 65064,...</td>
-    </tr>
   </tbody>
 </table>
-<p>935 rows × 6 columns</p>
 </div>
 
 
 
 
 ```python
-molecules_df
+molecules_df.head()
 ```
 
 
@@ -890,345 +443,8 @@ molecules_df
       <td>2-Methylpyrazine</td>
       <td>{peanut, chocolate, green, cocoa, popcorn, roa...</td>
     </tr>
-    <tr>
-      <th>5</th>
-      <td>26808</td>
-      <td>2,3,5-Trimethylpyrazine</td>
-      <td>{peanut, earthy, roast, hazelnut, cocoa, potat...</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>323</td>
-      <td>coumarin</td>
-      <td>{sweet, new mown hay, bitter, green, tonka}</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>7150</td>
-      <td>Methyl Benzoate</td>
-      <td>{sweet, prune, floral, herb, lettuce, cananga,...</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>11509</td>
-      <td>3-Hexanone</td>
-      <td>{ether, sweet, grape, waxy, fruity, rum}</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>637566</td>
-      <td>Geraniol</td>
-      <td>{rose, sweet, floral, geranium, citrus, waxy, ...</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>439341</td>
-      <td>alpha-Maltose</td>
-      <td>{sweet, odorless}</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>33931</td>
-      <td>2-Ethyl-4-hydroxy-5-methyl-3(2H)-furanone</td>
-      <td>{sweet, butterscotch, caramel, candy}</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>9261</td>
-      <td>Pyrazine</td>
-      <td>{pungent, sweet corn, hazelnut, barley, roasted}</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>6072</td>
-      <td>Phlorizin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>12587</td>
-      <td>4-Methylpentanoic Acid</td>
-      <td>{pungent, cheese}</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>878</td>
-      <td>methanethiol</td>
-      <td>{gasoline, garlic, decomposing cabbage, sulfur}</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>5281708</td>
-      <td>daidzein</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>240</td>
-      <td>benzaldehyde</td>
-      <td>{sweet, strong, cherry, bitter, burnt sugar, s...</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>244</td>
-      <td>benzyl alcohol</td>
-      <td>{rose, grapefruit, sweet, floral, berry, cherr...</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>441484</td>
-      <td>alpha-L-Sorbopyranose</td>
-      <td>{sweet, bitter}</td>
-    </tr>
-    <tr>
-      <th>20</th>
-      <td>1889</td>
-      <td>DL-Liquiritigenin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>21</th>
-      <td>4788</td>
-      <td>phloretin</td>
-      <td>{odorless, bitter}</td>
-    </tr>
-    <tr>
-      <th>22</th>
-      <td>6184</td>
-      <td>Hexanal</td>
-      <td>{fatty, aldehydic, green, sweaty, fat, grass, ...</td>
-    </tr>
-    <tr>
-      <th>23</th>
-      <td>11128</td>
-      <td>Linamarin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>24</th>
-      <td>8723</td>
-      <td>2-Methyl-1-Butanol</td>
-      <td>{onion, malt, wine, roasted, fruity}</td>
-    </tr>
-    <tr>
-      <th>25</th>
-      <td>12756</td>
-      <td>gamma-Caprolactone</td>
-      <td>{sweet, herbal, coconut, tobacco, coumarin}</td>
-    </tr>
-    <tr>
-      <th>26</th>
-      <td>8094</td>
-      <td>Heptanoic Acid</td>
-      <td>{rancid, cheese, cheesy, sour, sweat}</td>
-    </tr>
-    <tr>
-      <th>27</th>
-      <td>338</td>
-      <td>salicylic acid</td>
-      <td>{phenolic, nutty, faint}</td>
-    </tr>
-    <tr>
-      <th>28</th>
-      <td>11005</td>
-      <td>Tetradecanoic acid</td>
-      <td>{waxy, fatty, coconut, soapy}</td>
-    </tr>
-    <tr>
-      <th>29</th>
-      <td>1183</td>
-      <td>vanillin</td>
-      <td>{sweet, creamy, vanilla, chocolate}</td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-    </tr>
-    <tr>
-      <th>7593</th>
-      <td>6050</td>
-      <td>Tributyrin</td>
-      <td>{fatty, cheese, bitter, creamy, waxy}</td>
-    </tr>
-    <tr>
-      <th>7594</th>
-      <td>8130</td>
-      <td>Heptanal</td>
-      <td>{wine-lee, fatty, rancid, herbal, aldehydic, o...</td>
-    </tr>
-    <tr>
-      <th>7595</th>
-      <td>13144</td>
-      <td>calcium lactate</td>
-      <td>{odorless}</td>
-    </tr>
-    <tr>
-      <th>7596</th>
-      <td>180</td>
-      <td>acetone</td>
-      <td>{apple, pear, ethereal, solvent}</td>
-    </tr>
-    <tr>
-      <th>7597</th>
-      <td>6569</td>
-      <td>2-Butanone</td>
-      <td>{ether, ethereal, acetone, camphor, fruity}</td>
-    </tr>
-    <tr>
-      <th>7598</th>
-      <td>650</td>
-      <td>2,3-butanedione</td>
-      <td>{pungent, sweet, oily, strong, butter, creamy,...</td>
-    </tr>
-    <tr>
-      <th>7599</th>
-      <td>61503</td>
-      <td>D-Lactic acid</td>
-      <td>{odorless, acidic}</td>
-    </tr>
-    <tr>
-      <th>7600</th>
-      <td>638278</td>
-      <td>isoliquiritigenin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7601</th>
-      <td>126</td>
-      <td>4-hydroxybenzaldehyde</td>
-      <td>{sweet, woody, balsam, almond, nutty}</td>
-    </tr>
-    <tr>
-      <th>7602</th>
-      <td>444539</td>
-      <td>Cinnamic Acid</td>
-      <td>{sweet, storax, honey, balsam}</td>
-    </tr>
-    <tr>
-      <th>7603</th>
-      <td>5280598</td>
-      <td>Farnesal</td>
-      <td>{floral, minty}</td>
-    </tr>
-    <tr>
-      <th>7604</th>
-      <td>5280445</td>
-      <td>luteolin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7605</th>
-      <td>8768</td>
-      <td>3,4-Dihydroxybenzaldehyde</td>
-      <td>{dry, bitter, almond, medical}</td>
-    </tr>
-    <tr>
-      <th>7606</th>
-      <td>637542</td>
-      <td>p-coumaric acid</td>
-      <td>{balsamic, balsam}</td>
-    </tr>
-    <tr>
-      <th>7607</th>
-      <td>11552</td>
-      <td>3-Methylbutanal</td>
-      <td>{fatty, ethereal, chocolate, malt, aldehydic, ...</td>
-    </tr>
-    <tr>
-      <th>7608</th>
-      <td>445070</td>
-      <td>farnesol</td>
-      <td>{sweet, grapefruit, floral, anise, muguet, mil...</td>
-    </tr>
-    <tr>
-      <th>7609</th>
-      <td>6202</td>
-      <td>Thiamine Hydrochloride</td>
-      <td>{bitter, sour, mild}</td>
-    </tr>
-    <tr>
-      <th>7610</th>
-      <td>8468</td>
-      <td>Vanillic acid</td>
-      <td>{sweet, dairy, bean, powdery, milky, creamy, v...</td>
-    </tr>
-    <tr>
-      <th>7611</th>
-      <td>72277</td>
-      <td>(-)-Epigallocatechin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7612</th>
-      <td>602</td>
-      <td>Dl-Alanine</td>
-      <td>{odorless}</td>
-    </tr>
-    <tr>
-      <th>7613</th>
-      <td>876</td>
-      <td>Dl-Methionine</td>
-      <td>{sulfurous, mild, acidic}</td>
-    </tr>
-    <tr>
-      <th>7614</th>
-      <td>1182</td>
-      <td>DL-Valine</td>
-      <td>{odorless}</td>
-    </tr>
-    <tr>
-      <th>7615</th>
-      <td>9064</td>
-      <td>Cianidanol</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7616</th>
-      <td>72276</td>
-      <td>(-)-Epicatechin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7617</th>
-      <td>65064</td>
-      <td>(-)-Epigallocatechin gallate</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7618</th>
-      <td>107905</td>
-      <td>(-)-Epicatechin gallate</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7619</th>
-      <td>5280343</td>
-      <td>quercetin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7620</th>
-      <td>65084</td>
-      <td>Gallocatechin</td>
-      <td>{bitter}</td>
-    </tr>
-    <tr>
-      <th>7621</th>
-      <td>994</td>
-      <td>Dl-Phenylalanine</td>
-      <td>{odorless}</td>
-    </tr>
-    <tr>
-      <th>7622</th>
-      <td>445154</td>
-      <td>resveratrol</td>
-      <td>{bitter}</td>
-    </tr>
   </tbody>
 </table>
-<p>7623 rows × 3 columns</p>
 </div>
 
 
@@ -1241,22 +457,9 @@ print('Missing IDs: ' + str(missing_ids))
     Missing IDs: [406, 407, 420, 479, 483, 599, 605, 666, 681, 689, 692, 760, 761, 779, 797, 798, 801, 802, 804, 808, 809, 811, 812, 813, 816, 819, 838, 844, 866, 877, 888, 892, 903, 910, 922, 940, 946, 957, 966, 973, 974, 975, 976]
 
 
-The missing IDs might be due to a bad internet connection, as opposed to the content actually missing, so redownload them just to be sure.
+# Exploratory Data Analysis
 
-
-```python
-ranges = [(i-1, i) for i in missing_ids]
-flavor_df, molecules_df, missing_ids = update_flavordb_dataframes(flavor_df, molecules_df, ranges)
-print('# of missing IDs: ' + str(len(missing_ids)))
-print('Missing IDs: ' + str(missing_ids))
-```
-
-    Downloading took: 0.8541397333145142 minutes
-    # of missing IDs: 43
-    Missing IDs: [405, 406, 419, 478, 482, 598, 604, 665, 680, 688, 691, 759, 760, 778, 796, 797, 800, 801, 803, 807, 808, 810, 811, 812, 815, 818, 837, 843, 865, 876, 887, 891, 902, 909, 921, 939, 945, 956, 965, 972, 973, 974, 975]
-
-
-Done! Now we have a large database of foods. But how do we know if the database is complete enough? Let's test how many foods FlavorDB knows.
+Done! Now we have a large database of foods. But how do we know if the database is complete enough? Let's do a preliminary test how many foods FlavorDB knows.
 
 
 ```python
@@ -1290,6 +493,10 @@ foods = ['caramel', 'urchin', 'liver', 'haggis',
 
 
 
-Hmmm. This database is not exactly complete. While the database certainly includes some uncommon foods like whale, durian, pawpaw, and rose, it is also missing others such as sea urchin, liver, and blood. In addition, common terms, like "white fish", which refers to several species of fish, are left out entirely ("whitefish" refers to a single species of fish).
+Hmmm. This database is not exactly complete. While the database certainly includes some uncommon foods like [whale](https://en.wikipedia.org/wiki/Whale_meat), [durian](https://en.wikipedia.org/wiki/Durian), [paw-paw](https://en.wikipedia.org/wiki/Asimina_triloba), and [rose](https://en.wikipedia.org/wiki/Rose#Food_and_drink), it is also missing others such as [sea urchin](https://en.wikipedia.org/wiki/Sea_urchin#As_food), [liver](https://en.wikipedia.org/wiki/Liver_(food)), and [blood](https://en.wikipedia.org/wiki/Blood_as_food) (see [black pudding](https://en.wikipedia.org/wiki/Black_pudding)). In addition, common terms, like ["white fish"](https://en.wikipedia.org/wiki/Whitefish_(fisheries_term)), which refers to several species of fish, are left out entirely ("whitefish" refers to a single species of fish).
 
-Of course, we wouldn't expect this database to have the food compounds of caramel, because even today, the process of caramelization is extremely complex and not well-understood, so complete information on caramel shouldn't be there.
+Of course, we wouldn't expect this database to have the food compounds of caramel, because even today, the [process of caramelization](https://www.scienceofcooking.com/caramelization.htm) is [extremely complex](https://www.exploratorium.edu/cooking/candy/caramels-story.html) and [not well-understood](https://bcachemistry.wordpress.com/2014/05/11/the-chemistry-of-caramel/), so [complete information on caramel](https://chem-net.blogspot.com/2015/04/food-chemistry-caramelization-sugar15.html) shouldn't be there.
+
+Hmmm. This database is not exactly complete. While the database certainly includes some uncommon foods like [whale](https://en.wikipedia.org/wiki/Whale_meat), [durian](https://en.wikipedia.org/wiki/Durian), [paw-paw](https://en.wikipedia.org/wiki/Asimina_triloba), and [rose](https://en.wikipedia.org/wiki/Rose#Food_and_drink), it is also missing others such as [sea urchin](https://en.wikipedia.org/wiki/Sea_urchin#As_food), [liver](https://en.wikipedia.org/wiki/Liver_(food)), and [blood](https://en.wikipedia.org/wiki/Blood_as_food) (see [black pudding](https://en.wikipedia.org/wiki/Black_pudding)). In addition, common terms, like ["white fish"](https://en.wikipedia.org/wiki/Whitefish_(fisheries_term)), which refers to several species of fish, are left out entirely ("whitefish" refers to a single species of fish).
+
+Of course, we shouldn't expect this database to have the food compounds of caramel, because even today, the [process of caramelization](https://www.scienceofcooking.com/caramelization.htm) is [extremely complex](https://www.exploratorium.edu/cooking/candy/caramels-story.html) and [not well-understood](https://bcachemistry.wordpress.com/2014/05/11/the-chemistry-of-caramel/), so [complete information on caramel](https://chem-net.blogspot.com/2015/04/food-chemistry-caramelization-sugar15.html) shouldn't be there.
