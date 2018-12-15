@@ -11784,8 +11784,9 @@ div#notebook {
     <br>
     <br>
     Vincent Choo
-</center><h1 id="Introduction">Introduction<a class="anchor-link" href="#Introduction">&#182;</a></h1><p>Food pairing is...</p>
-<p>First, we'll need a database of flavor compounds in each kind of food ingredient. Several databases concerning food exist, such as <a href="http://foodb.ca/">FoodDB</a>, <a href="http://www.flavornet.org/">FlavorNet</a>, and <a href="https://www.ncbi.nlm.nih.gov/pubmed/29059383">FlavorDB</a>, but not all associate foods with the compounds they contain. The one at FlavorDB does, so we can scrape our data from the FlavorDB <a href="https://cosylab.iiitd.edu.in/flavordb/">website</a>.</p>
+</center><h1 id="Introduction">Introduction<a class="anchor-link" href="#Introduction">&#182;</a></h1><p><a href="https://en.wikipedia.org/wiki/Foodpairing">Food pairing</a> is a principle for deciding which foods, when eaten together, are better flavor-wise. <a href="https://www.nature.com/articles/srep00196">One study, published in <em>Nature</em></a>, found that Western cooking, for example, prefers to pair foods when they share many flavors, as opposed to Eastern cooking, which tends to pair foods when they contrast flavor-wise. When combined with knowledge of what foods are central to each culture, it then becomes possible to derive insights what gives each cuisine its style.</p>
+<p>Hypothetically, a <a href="https://en.wikipedia.org/wiki/Fusion_cuisine">fusion restuarant</a> might choose to cook in a distinctly Eastern style (contrasting flavors) using mostly Western ingredients. It might even be possible to generate new cuisine styles that are designed to be as different as possible from existing styles. However, before any of that happens, we'll need data on food, and lots of it.</p>
+<h1 id="Overview">Overview<a class="anchor-link" href="#Overview">&#182;</a></h1><p>First, we'll need a database of flavor compounds in each kind of food ingredient. Several databases concerning food exist, such as <a href="http://foodb.ca/">FoodDB</a>, <a href="http://www.flavornet.org/">FlavorNet</a>, and <a href="https://www.ncbi.nlm.nih.gov/pubmed/29059383">FlavorDB</a>, but not all associate foods with the compounds they contain. The one at FlavorDB does, so we can scrape our data from the FlavorDB <a href="https://cosylab.iiitd.edu.in/flavordb/">website</a>.</p>
 <p>Once we have the data, we'll need it in a form that we can easily manipulate. <a href="https://pandas.pydata.org/pandas-docs/version/0.23.4/generated/pandas.DataFrame.html"><code>Pandas DataFrames</code></a> are a good choice - they're effectively small databases that we can access and manipulate with the power of Python's other libraries, and without the need for a SQL-like syntax.</p>
 <p>Then, we'll be able to run all sorts of nice data visualizations and analysis methods on our <code>DataFrames</code>.</p>
 
@@ -11800,8 +11801,8 @@ div#notebook {
 <p>The general steps to data scraping are:</p>
 <ol>
 <li><strong>Download</strong> the JSON files which describe the chemical makeup of the food.<ul>
-<li><strong>Find</strong> the URLs which have the JSON files.</li>
-<li><strong>Iterate</strong> over the URLs that have these JSON files, and download the data in them.</li>
+<li>Find the URLs which have the JSON files.</li>
+<li>Iterate over the URLs that have these JSON files, and download the data in them.</li>
 </ul>
 </li>
 <li><strong>Process</strong> the JSON data by converting it into a Pandas <code>Dataframe</code>.</li>
@@ -12410,7 +12411,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Exploratory-Data-Analysis">Exploratory Data Analysis<a class="anchor-link" href="#Exploratory-Data-Analysis">&#182;</a></h1><p>Done! Now we have a large database of foods. But how do we know if the database is complete enough? Let's do a preliminary test how many foods FlavorDB knows.</p>
+<h1 id="Exploratory-Data-Analysis">Exploratory Data Analysis<a class="anchor-link" href="#Exploratory-Data-Analysis">&#182;</a></h1><p>Done! Now we have a large database of foods. But how do we know if the database is complete enough? Let's do a preliminary test on how many foods FlavorDB knows.</p>
 
 </div>
 </div>
@@ -12474,16 +12475,6 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Hmmm. This database is not exactly complete. While the database certainly includes some uncommon foods like <a href="https://en.wikipedia.org/wiki/Whale_meat">whale</a>, <a href="https://en.wikipedia.org/wiki/Durian">durian</a>, <a href="https://en.wikipedia.org/wiki/Asimina_triloba">paw-paw</a>, and <a href="https://en.wikipedia.org/wiki/Rose#Food_and_drink">rose</a>, it is also missing others such as <a href="https://en.wikipedia.org/wiki/Sea_urchin#As_food">sea urchin</a>, <a href="https://en.wikipedia.org/wiki/Liver_(food">liver</a>), and <a href="https://en.wikipedia.org/wiki/Blood_as_food">blood</a> (see <a href="https://en.wikipedia.org/wiki/Black_pudding">black pudding</a>). In addition, common terms, like <a href="https://en.wikipedia.org/wiki/Whitefish_(fisheries_term">"white fish"</a>), which refers to several species of fish, are left out entirely ("whitefish" refers to a single species of fish).</p>
 <p>Of course, we wouldn't expect this database to have the food compounds of caramel, because even today, the <a href="https://www.scienceofcooking.com/caramelization.htm">process of caramelization</a> is <a href="https://www.exploratorium.edu/cooking/candy/caramels-story.html">extremely complex</a> and <a href="https://bcachemistry.wordpress.com/2014/05/11/the-chemistry-of-caramel/">not well-understood</a>, so <a href="https://chem-net.blogspot.com/2015/04/food-chemistry-caramelization-sugar15.html">complete information on caramel</a> shouldn't be there.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Hmmm. This database is not exactly complete. While the database certainly includes some uncommon foods like <a href="https://en.wikipedia.org/wiki/Whale_meat">whale</a>, <a href="https://en.wikipedia.org/wiki/Durian">durian</a>, <a href="https://en.wikipedia.org/wiki/Asimina_triloba">paw-paw</a>, and <a href="https://en.wikipedia.org/wiki/Rose#Food_and_drink">rose</a>, it is also missing others such as <a href="https://en.wikipedia.org/wiki/Sea_urchin#As_food">sea urchin</a>, <a href="https://en.wikipedia.org/wiki/Liver_(food">liver</a>), and <a href="https://en.wikipedia.org/wiki/Blood_as_food">blood</a> (see <a href="https://en.wikipedia.org/wiki/Black_pudding">black pudding</a>). In addition, common terms, like <a href="https://en.wikipedia.org/wiki/Whitefish_(fisheries_term">"white fish"</a>), which refers to several species of fish, are left out entirely ("whitefish" refers to a single species of fish).</p>
-<p>Of course, we shouldn't expect this database to have the food compounds of caramel, because even today, the <a href="https://www.scienceofcooking.com/caramelization.htm">process of caramelization</a> is <a href="https://www.exploratorium.edu/cooking/candy/caramels-story.html">extremely complex</a> and <a href="https://bcachemistry.wordpress.com/2014/05/11/the-chemistry-of-caramel/">not well-understood</a>, so <a href="https://chem-net.blogspot.com/2015/04/food-chemistry-caramelization-sugar15.html">complete information on caramel</a> shouldn't be there.</p>
 
 </div>
 </div>
