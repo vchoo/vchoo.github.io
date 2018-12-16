@@ -37,7 +37,7 @@ The general steps to data scraping are:
 
 ## Steps 1-2: JSON Files
 
-A quick inspection of the FlavorDB website reveals that all of the JSON files we want are at https://cosylab.iiitd.edu.in/flavordb/entities_json?id=x, where ``x`` an integer. Then it's a cinch to write a few functions which go to those addresses and converts those JSON files into dictionaries. 
+A quick inspection of the FlavorDB website reveals that all of the JSON files we want are at https://cosylab.iiitd.edu.in/flavordb/entities_json?id=x, where ``x`` is an integer. Then it's a cinch to write a few functions which go to those addresses and converts those JSON files into dictionaries. 
 
 
 ```python
@@ -50,6 +50,8 @@ import time
 import numpy as np
 import pandas as pd
 import math
+
+import matplotlib.pyplot as plt
 ```
 
 
@@ -112,7 +114,6 @@ def clean_flavordb_dataframes(flavor_df, molecules_df):
     """
     Helps ensure consistent intra-column typing and converts all strings to lowercase.
     """
-    
     strtype = type('')
     settype = type(set())
     
@@ -136,7 +137,10 @@ def clean_flavordb_dataframes(flavor_df, molecules_df):
         for elem in molecules_df['flavor profile']
     ]
     
-    return flavor_df, molecules_df
+    return [
+        flavor_df.groupby('entity id').first().reset_index(),
+        molecules_df.groupby('pubchem id').first().reset_index()
+    ]
 ```
 
 This is where most of the work is done. ``get_flavordb_dataframes()`` is the code that ties together all three steps of data scraping: **downloading**, **processing**, and **cleaning**. It even handles errors, for when a JSON page is missing.
@@ -288,7 +292,6 @@ def load_db():
     df1['flavor profile'] = [eval(x) for x in df1['flavor profile']]
     
     df0, df1 = clean_flavordb_dataframes(df0, df1)
-    
     return df0, df1, missing_entity_ids(df0)
 ```
 
@@ -418,33 +421,33 @@ molecules_df.head()
   <tbody>
     <tr>
       <th>0</th>
-      <td>22201</td>
-      <td>2,3-Dimethylpyrazine</td>
-      <td>{peanut, peanut butter, butter, cocoa, leather...</td>
+      <td>4</td>
+      <td>1-Aminopropan-2-ol</td>
+      <td>{fishy}</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>31252</td>
-      <td>2,5-Dimethylpyrazine</td>
-      <td>{medicine, roasted nuts, roast beef, woody, co...</td>
+      <td>49</td>
+      <td>3-Methyl-2-oxobutanoic acid</td>
+      <td>{fruity}</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>26331</td>
-      <td>2-Ethylpyrazine</td>
-      <td>{peanut, peanut butter, butter, bitter, woody,...</td>
+      <td>58</td>
+      <td>2-oxobutanoic acid</td>
+      <td>{sweet, creamy, brown, lactonic, caramel}</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>27457</td>
-      <td>2-Ethyl-3-Methylpyrazine</td>
-      <td>{peanut, earthy, roast, hazelnut, corn, potato...</td>
+      <td>70</td>
+      <td>4-Methyl-2-oxovaleric acid</td>
+      <td>{fruity}</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>7976</td>
-      <td>2-Methylpyrazine</td>
-      <td>{peanut, chocolate, green, cocoa, popcorn, roa...</td>
+      <td>72</td>
+      <td>3,4-Dihydroxybenzoic Acid</td>
+      <td>{phenolic, balsamic, mild}</td>
     </tr>
   </tbody>
 </table>
@@ -461,6 +464,8 @@ print('Missing IDs: ' + str(missing_ids))
 
 
 # Exploratory Data Analysis
+
+## Preliminary Analysis
 
 Done! Now we have a large database of foods. But how do we know if the database is complete enough? Let's do a preliminary test on how many foods FlavorDB knows.
 
@@ -499,3 +504,303 @@ foods = ['caramel', 'urchin', 'liver', 'haggis',
 Hmmm. This database is not exactly complete. While the database certainly includes some uncommon foods like [whale](https://en.wikipedia.org/wiki/Whale_meat), [durian](https://en.wikipedia.org/wiki/Durian), [paw-paw](https://en.wikipedia.org/wiki/Asimina_triloba), and [rose](https://en.wikipedia.org/wiki/Rose#Food_and_drink), it is also missing others such as [sea urchin](https://en.wikipedia.org/wiki/Sea_urchin#As_food), [liver](https://en.wikipedia.org/wiki/Liver_(food)), and [blood](https://en.wikipedia.org/wiki/Blood_as_food) (see [black pudding](https://en.wikipedia.org/wiki/Black_pudding)). In addition, common terms, like ["white fish"](https://en.wikipedia.org/wiki/Whitefish_(fisheries_term)), which refers to several species of fish, are left out entirely ("whitefish" refers to a single species of fish).
 
 Of course, we wouldn't expect this database to have the food compounds of caramel, because even today, the [process of caramelization](https://www.scienceofcooking.com/caramelization.htm) is [extremely complex](https://www.exploratorium.edu/cooking/candy/caramels-story.html) and [not well-understood](https://bcachemistry.wordpress.com/2014/05/11/the-chemistry-of-caramel/), so [complete information on caramel](https://chem-net.blogspot.com/2015/04/food-chemistry-caramelization-sugar15.html) shouldn't be there.
+
+Now that's out of the way, it's time for analysis and visualizations!
+
+## Similar Foods
+
+Which foods are most similar to each other? From the previously mentioned [Nature article](https://www.nature.com/articles/srep00196), the mean number of shared compounds per recipe is given by ``msc()``:
+
+
+```python
+def get_food(food_name, flavor_df):
+    return flavor_df[[
+        (flavor_df.at[i, 'alias'] == food_name
+         or food_name in flavor_df.at[i, 'synonyms'])
+        for i in flavor_df.index
+    ]]
+
+
+def get_molecules(food_name, flavor_df):
+    out = list(get_food(food_name, flavor_df)['molecules'])
+    if len(out) > 1:
+        raise ValueError('food ' + food_name + ' has more than one entry')
+    return out[0]
+    
+    
+def msc(foods, flavor_df, **kwargs):
+    """
+    Return the mean shared compounds (MSC) for a given recipe (set of foods),
+    i.e. sum(# shared compounds per 2 foods) / (# of combinations of 2 foods)
+    """
+    use_index = kwargs.get('use_index', False)
+    if use_index:
+        mols = [flavor_df.at[i, 'molecules'] for i in foods]
+    else:
+        mols = [get_molecules(f, flavor_df) for f in foods]
+    
+    nr = len(foods)
+    out = 0
+    for i in range(nr):
+        for j in range(i + 1, nr):
+            out += len(mols[i].intersection(mols[j]))
+    out *= 2.0 / (nr * (nr - 1))
+    return out
+```
+
+Since we only have ~1,000 foods in our ``DataFrame``, it's not too expensive to find the MSC between every two foods. Then, we can look for "clusters" of similar foods and ones that very different from one another.
+
+
+```python
+len_flavor = len(flavor_df.index)
+food_msc = np.ndarray((len_flavor, len_flavor))
+for i in range(len_flavor):
+    for j in range(i + 1, len_flavor):
+        food_msc[i][j] = msc([i, j], flavor_df, use_index=True)
+        food_msc[j][i] = food_msc[i][j]
+```
+
+Now that we have the MSC between all pairs of food, let's see how many compounds foods normally share:
+
+
+```python
+msc_data = food_msc.reshape(len_flavor**2)
+
+print('Average: ' + str(np.average(msc_data)))
+print('Median: ' + str(np.median(msc_data)))
+
+fignum = 1
+plt.hist(msc_data, bins=list(range(60)))
+plt.title('Figure ' + str(fignum) + ':\nFrequency of Mean Shared Compounds')
+plt.xlabel('mean shared compounds')
+plt.ylabel('frequency')
+plt.show()
+fignum += 1
+```
+
+    Average: 18.9843392719
+    Median: 2.0
+
+
+
+![png](food-tutorial_files/food-tutorial_27_1.png)
+
+
+This shouldn't be that surprising; only similar foods (like beef and pork) should have similar compounds in them. The vast majority of foods taste really different from one another!
+
+But wait - how similar are foods within each category? How similar are they to other categories? What are our categories?
+
+
+```python
+set(flavor_df['category'])
+```
+
+
+
+
+    {'additive',
+     'bakery',
+     'berry',
+     'beverage',
+     'beverage alcoholic',
+     'beverage caffeinated',
+     'cabbage',
+     'cereal',
+     'dairy',
+     'dish',
+     'essential oil',
+     'fish',
+     'flower',
+     'fruit',
+     'fruit citrus',
+     'fruit essence',
+     'fruit-berry',
+     'fungus',
+     'gourd',
+     'herb',
+     'legume',
+     'maize',
+     'meat',
+     'nut',
+     'plant',
+     'plant derivative',
+     'seafood',
+     'seed',
+     'spice',
+     'vegetable',
+     'vegetable fruit',
+     'vegetable root',
+     'vegetable stem',
+     'vegetable tuber'}
+
+
+
+Oops. It looks like we still have some more data cleaning to do. What's the difference between a vegetable, fruit, and vegetable fruit? How come cabbage gets its own category?
+
+
+```python
+for c in set(flavor_df['category']):
+    print(c + ': ')
+    print(str(list(flavor_df[flavor_df['category'] == c]['alias'])))
+    print('')
+```
+
+    dish: 
+    ['frankfurter sausage', 'ice cream', 'nougat', 'toffee', 'cake', 'pizza', 'other snack food', 'pastry', 'dragée', 'chewing gum', 'marzipan', 'salad dressing', 'sausage', 'meatball', 'pate', 'meat bouillon', 'dumpling', 'soup', 'remoulade', 'fruit gum', 'zwieback', 'snack bar', 'burrito', 'hamburger', 'chili', 'taco', 'tortilla', 'nachos', 'salad', 'egg roll', 'stew', 'falafel', 'frybread', 'other frozen dessert', 'lasagna', 'pancake', 'pudding', 'waffle', 'meatloaf', 'couscous', 'chimichanga', 'tostada', 'quesadilla', 'baked potato', 'hot dog', 'enchilada', 'other sandwich', 'breakfast sandwich', 'adobo', 'macaroni and cheese', 'hushpuppy', 'relish', 'fruit salad', 'vegetarian food', 'cold cut', 'pie', 'soy cream', 'ice cream cone', 'natto', 'ravioli', 'scrapple', 'other pasta dish', 'succotash', 'tamale', 'rice cake', 'akutaq', 'trail mix', 'pupusa', 'empanada', 'arepa', 'gefilte fish', 'fish burger', 'other dish', 'pot pie', 'hummus', 'potato puffs', 'potato gratin']
+    
+    flower: 
+    ['artichoke', 'champaca', 'jasmine', 'lavendar', 'rose', 'sunflower', 'dandelion', 'garland chrysanthemum', 'sesbania flower']
+    
+    fruit-berry: 
+    ['elderberry']
+    
+    fungus: 
+    ['mushroom', 'truffle', 'abalone', "jew's ear", 'shiitake', 'enokitake', 'oyster mushroom', 'cloud ear fungus', 'maitake', 'chanterelle', 'morchella']
+    
+    plant: 
+    ['allium', 'alpinia', 'ceriman', 'chicory', 'hops', 'laurel', 'myrtle', 'olive', 'pine', 'sassafras', 'tea', 'tobacco', 'watercress', 'lupine', 'purslane', 'small leaf linden', 'longan', 'abiyuch', 'bamboo shoots', 'giant butterbur', 'cardoon', 'carob', 'oregon yampah', 'lambsquarters', 'white lupine', 'alpine sweetvetch', 'nopal', 'colorado pinyon', 'french plantain', 'common salsify', 'yautia', 'alaska wild rhubarb', 'rowal', 'ostrich fern', 'agave', 'oil palm', 'sago palm', 'black salsify', 'thistle', 'babassu palm', 'shea tree', 'oil-seed camellia', 'ucuhuba', 'tree fern', 'yellow pond lily']
+    
+    cabbage: 
+    ['broccoli', 'brussels sprout', 'cabbage', 'cauliflower', 'horseradish', 'mustard', 'kohlrabi', 'wasabi', 'swamp cabbage', 'komatsuna', 'pak choy', 'kai lan', 'rapini', 'kale', 'prairie turnip', 'hedge mustard']
+    
+    fruit essence: 
+    ['vanilla']
+    
+    legume: 
+    ['beans', 'lima beans', 'kidney beans', 'peas', 'soybean', 'soybean oil', 'cluster bean', 'pigeon pea', 'chickpea', 'grass pea', 'lentils', 'millet', 'scarlet bean', 'adzuki bean', 'gram bean', 'mung bean', 'climbing bean', 'catjang pea', 'hyacinth bean', 'moth bean', 'winged bean', 'black-eyed pea', 'yardlong bean']
+    
+    additive: 
+    ['agar', 'spirulina', 'sauce', 'salt', 'sugar', 'sugar substitute', 'casein', 'fruit preserve', 'leavening agent', 'gelatin', 'water', 'syrup', 'miso', 'icing', 'topping', 'gelatin dessert', 'pectin', 'spread', 'ketchup', 'cooking oil', 'shortening', 'molasses', 'stuffing', 'margarine', 'margarine like spread']
+    
+    bakery: 
+    ['bakery products', 'bread', 'rye bread', 'wheaten bread', 'white bread', 'wholewheat bread', 'fried potato', 'pasta', 'biscuit', 'marshmallow', 'meringue', 'potato chip', 'tortilla chip', 'corn chip', 'phyllo dough', 'pie crust', 'pita bread', 'focaccia', 'bagel', 'other bread product', 'piki bread', 'french toast', 'oat bread', 'potato bread', 'multigrain bread', 'rice bread', 'pan dulce', 'raisin bread', 'wonton wrapper', 'chocolate mousse', 'fudge', 'candy bar']
+    
+    vegetable fruit: 
+    ['capsicum', 'cherry pepper', 'tomato', 'turkey berry']
+    
+    berry: 
+    ['sea buckthorns', 'berry', 'bilberry', 'blackberry', 'blueberry', 'cherry', 'bitter cherry', 'sour cherry', 'wild cherry', 'cloudberry', 'cranberry', 'gooseberry', 'lingonberry', 'loganberry', 'raspberry', 'strawberry', 'strawberry jam', 'black crowberry', 'black huckleberry', 'mulberry', 'black mulberry', 'red raspberry', 'black raspberry', 'cherry tomato', 'rowanberry', 'sparkleberry', 'bayberry', "elliott's blueberry", 'canada blueberry', 'deerberry', 'jostaberry', 'acerola', 'squashberry', 'groundcherry', 'ohelo berry', 'pitanga', 'salmonberry', 'mexican groundcherry', 'boysenberry', 'chinese bayberry', 'saskatoon berry', 'nanking cherry']
+    
+    nut: 
+    ['almond', 'brazil nut', 'peanut', 'filbert', 'hazelnut', 'macadamia nut', 'nuts', 'pecans', 'walnut', 'cashew nut', 'chestnut', 'pistachio', 'acorn', 'beech nut', 'butternut', 'chinese chestnut', 'european chestnut', 'ginkgo nuts', 'japanese chestnut', 'pili nut', 'mixed nuts']
+    
+    spice: 
+    ['anise', 'anise hyssop', 'star anise', 'caraway', 'cardamom', 'cassia', 'celery', 'cinnamon', 'clove', 'cumin', 'ginger', 'mace', 'marjoram', 'nutmeg', 'oregano', 'parsley', 'pepper', 'saffron', 'turmeric', 'allspice', 'asafoetida', 'carom seed', 'jalapeno', 'poppy seed', 'white pepper']
+    
+    herb: 
+    ['angelica', 'artemisia', 'basil', 'buckwheat', 'calamus', 'chervil', 'coriander', 'cornmint', 'dill', 'fennel', 'fenugreek', 'garlic', 'lemon balm', 'liqourice', 'mint', 'rhubarb', 'rosemary', 'sage', 'spearmint', 'scotch spearmint', 'tarragon', 'thyme', 'peppermint', 'curry leaf', 'silver linden', 'lemon verbena', 'borage', 'capers', 'safflower', 'rocket salad', 'garden cress', 'mexican oregano', 'evening primrose', 'sorrel', 'summer savory', 'winter savory', 'linden', 'common verbena', 'pineappple sage', 'alfalfa', 'amaranth', 'chia', 'dock', 'fireweed', 'american pokeweed', 'roselle', 'teff', 'tea leaf willow', 'epazote', 'sourdock', 'narrowleaf cattail']
+    
+    fruit: 
+    ['apple', 'apple sauce', 'apricot', 'avocado', 'babaco', 'banana', 'beli', 'byrsonima crassifolia', 'cashew apple', 'cherimoya', 'coconut', 'currant', 'black currant', 'red currant', 'white currant', 'dates', 'durian', 'feijoa', 'fig', 'grape', 'guava', 'hogplum', 'jackfruit', 'kiwifruit', 'litchi', 'loquat', 'malay apple', 'mango', 'melon', 'musk melon', 'naranjilla', 'orange', 'bitter orange', 'papaya', 'mountain papaya', 'passionfruit', 'yellow passionfruit', 'pawpaw', 'peach', 'pear', 'bartlett pear', 'prickly pear', 'pepino', 'pineapple', 'plum', 'plumcot', 'pumpkin', 'quince', 'chinese quince', 'raisin', 'roseapple', 'sapodilla', 'soursop', 'spineless monkey orange', 'starfruit', 'tamarind', 'woodapple', 'pomegranate', 'water chestnut', 'garcinia indica', 'japanese persimmon', 'medlar', 'muscadine grape', 'buffalo currant', 'rambutan', 'skunk currant', 'winter squash', 'breadfruit', 'butternut squash', 'natal plum', 'jujube', 'mammee apple', 'purple mangosteen', 'common persimmon', 'malabar plum', 'rose hip', 'persimmon', 'horned melon', 'cupua\x8du', 'nance', 'japanese pumpkin']
+    
+    dairy: 
+    ['butter', 'buttermilk', 'cheese', 'blue cheese', 'camembert cheese', 'cheddar cheese', 'comte cheese', 'cottage cheese', 'cream cheese', 'domiati cheese', 'emmental cheese', 'feta cheese', 'goat cheese', 'gruyere cheese', 'limburger cheese', 'mozzarella cheese', 'munster cheese', 'other cheeses', 'parmesan cheese', 'provolone cheese', 'romano cheese', 'roquefort cheese', 'russian cheese', 'sheep cheese', 'swiss cheese', 'tilsit cheese', 'dairy products', 'ghee', 'milk', 'milk fat', 'goat milk', 'milk powder', 'sheep milk', 'skimmed milk', 'yogurt', 'paneer', 'ricotta cheese', 'ymer', 'cream', 'whey', 'milk human', 'kefir', 'other fermented milk', 'dulce de leche', 'sweet custard', 'junket', 'evaporated milk', 'condensed milk']
+    
+    seafood: 
+    ['clam', 'crab', 'crayfish', 'kelp', 'krill', 'lobster', 'mollusc', 'oyster', 'prawn', 'scallop', 'shellfish', 'shrimp', 'trassi', 'squid', 'red king crab', 'common octopus', 'irish moss', 'leather chiton', 'north pacific giant octopus', 'spotted seal', 'sea cucumber', 'steller sea lion', 'bearded seal', 'ringed seal', 'whelk', 'spiny lobster', 'bivalvia', 'walrus', 'purple laver', 'wakame', 'jellyfish', 'true seal', 'red algae', 'kombu', 'ascidians']
+    
+    vegetable stem: 
+    ['asparagus']
+    
+    beverage caffeinated: 
+    ['coffee', 'mate', 'black tea', 'green tea', 'roibos tea', 'arabica coffee', 'coffee mocha']
+    
+    fish: 
+    ['bonito', 'caviar', 'codfish', 'fish', 'fatty fish', 'lean fish', 'fish oil', 'smoked fish', 'salmon', 'atlantic herring', 'atlantic mackerel', 'painted comber', 'atlantic pollock', 'atlantic wolffish', 'striped bass', 'beluga whale', 'alaska blackfish', 'northern bluefin tuna', 'bluefish', 'bowhead whale', 'burbot', 'american butterfish', 'common carp', 'channel catfish', 'cisco', 'nuttall cockle', 'atlantic croaker', 'cusk', 'cuttlefish', 'devilfish', 'dolphin fish', 'freshwater drum', 'freshwater eel', 'european anchovy', 'turbot', 'florida pompano', 'greenland halibut', 'grouper', 'haddock', 'hippoglossus', 'pacific jack mackerel', 'king mackerel', 'common ling', 'lingcod', 'milkfish', 'monkfish', 'striped mullet', 'ocean pout', 'pacific herring', 'pacific rockfish', 'northern pike', 'rainbow smelt', 'rainbow trout', 'orange roughy', 'sablefish', 'pink salmon', 'chum salmon', 'coho salmon', 'sockeye salmon', 'chinook salmon', 'atlantic salmon', 'spanish mackerel', 'pacific sardine', 'scup', 'sea trout', 'american shad', 'shark', 'sheefish', 'sheepshead', 'snapper', 'greater sturgeon', 'white sucker', 'pumpkinseed sunfish', 'swordfish', 'tilefish', 'salmonidae', 'walleye', 'alaska pollock', 'broad whitefish', 'whitefish', 'whiting', 'yellowfin tuna', 'yellowtail amberjack', 'pollock', 'albacore tuna', 'atlantic halibut', 'smelt', 'clupeinae', 'percoidei', 'perciformes', 'flatfish', 'spot croaker', 'atlantic menhaden', 'anchovy', 'blue whiting', 'carp bream', 'sturgeon', 'charr', 'common dab', 'spiny dogfish', 'anguilliformes', 'garfish', 'gadiformes', 'lake trout', 'lemon sole', 'lumpsucker', 'scombridae', 'norway haddock', 'norway pout', 'pikeperch', 'pleuronectidae', 'pacific ocean perch', 'true sole', 'catfish', 'common tuna', 'cetacea', 'conch', 'other fish product', 'roe', 'cichlidae']
+    
+    vegetable: 
+    ['green beans', 'chive', 'endive', 'leek', 'lettuce', 'okra', 'onion', 'shallot', 'chard', 'colocasia', 'drumstick leaf', 'eggplant', 'spinach', 'redskin onion', 'burdock', 'pepper c. baccatum', 'pepper c. chinense', 'welsh onion', 'corn salad', 'malabar spinach', 'new zealand spinach', 'heart of palm', 'green zucchini', 'yellow zucchini']
+    
+    beverage: 
+    ['wort', 'hot chocolate', 'energy drink', 'hibiscus tea', 'soy milk', 'cocktail', 'nutritional drink', 'fruit juice', 'greenthread tea', 'vegetable juice', 'horchata', 'soft drink', 'milkshake']
+    
+    fruit citrus: 
+    ['bergamot', 'citrus fruits', 'grapefruit', 'kumquat', 'lemon', 'lime', 'mandarin orange', 'satsuma orange', 'tangerine', 'pummelo']
+    
+    seed: 
+    ['cocoa', 'muskmallow', 'sesame', 'flaxseed', 'nigella seed']
+    
+    plant derivative: 
+    ['soybean sauce', 'fermented tea', 'creosote', 'honey', 'macaroni', 'mustard oil', 'peanut butter', 'peanut oil', 'storax', 'vinegar', 'apple cider vinegar', 'breadnut tree seed', 'cottonseed', 'jute', 'chocolate spread', 'cocoa butter', 'cocoa powder', 'chocolate', 'tofu', 'soy yogurt']
+    
+    vegetable root: 
+    ['radish', 'turnip', 'rutabaga', 'beetroot', 'carrot', 'parsnip', 'sweet potato', 'ginseng']
+    
+    vegetable tuber: 
+    ['cassava', 'potato', 'arrowhead', 'arrowroot', 'jerusalem artichoke', 'mountain yam', 'taro', 'yam', 'jicama', 'tapioca pearl']
+    
+    essential oil: 
+    ['achilleas', 'arar', 'buchu', 'cajeput', 'camphor', 'cascarilla', 'cedar', 'chamomile', 'citronella', 'citrus peel oil', 'eucalyptus', 'fir', 'geranium', 'grapefruit peel oil', 'grass', 'hops oil', 'hyacinth', 'hyssop oil', 'lemon grass', 'lemon peel oil', 'lime peel oil', 'lovage', 'mandarin orange peel oil', 'mastic gum', 'mentha oil', 'myrrh', 'neroli oil', 'orange oil', 'orris', 'clary sage', 'red sage', 'spanish sage', 'sandalwood', 'sweet grass', 'valerian', 'wattle', 'yarrow', 'ylang-ylang', 'canola oil', 'kenaf', 'lotus', 'kewda']
+    
+    gourd: 
+    ['chayote', 'cucumber', 'ashgourd', 'bittergourd', 'bottlegourd', 'towel gourd', 'tinda', 'cucurbita']
+    
+    maize: 
+    ['corn', 'corn oil', 'popcorn', 'sweetcorn', 'cornbread', 'corn grits']
+    
+    meat: 
+    ['beef', 'beef processed', 'chicken', 'ham', 'lamb', 'meat', 'mutton', 'pork', 'sukiyaki', 'turkey', 'beaver', 'bison', 'black bear', 'wild boar', 'brown bear', 'buffalo', 'caribou', 'mule deer', 'mallard duck', 'elk', 'emu', 'greylag goose', 'horse', 'moose', 'muskrat', 'opossum', 'ostrich', 'pheasant', 'polar bear', 'european rabbit', 'raccoon', 'squab', 'squirrel', 'deer', 'rabbit', 'beefalo', 'great horned owl', 'quail', 'anatidae', 'true frog', 'mountain hare', 'rock ptarmigan', 'snail', 'columbidae', 'other meat product', 'green turtle', 'guinea hen']
+    
+    cereal: 
+    ['barley', 'crispbread', 'malt', 'oats', 'rice', 'rye', 'basmati rice', 'tartary buckwheat', 'sorghum', 'wheat', 'red rice', 'annual wild rice', 'hard wheat', 'triticale', 'breakfast cereal', 'sourdough', 'quinoa', 'spelt', 'wild rice', 'oriental wheat', 'bulgur', 'semolina', 'flour']
+    
+    beverage alcoholic: 
+    ['arrack', 'beer', 'bantu beer', 'brandy', 'anise brandy', 'apple brandy', 'armagnac brandy', 'blackberry brandy', 'cherry brandy', 'cognac brandy', 'papaya brandy', 'pear brandy', 'plum brandy', 'raspberry brandy', 'weinbrand brandy', 'gin', 'rum', 'whisky', 'bourbon whisky', 'canadian whisky', 'finnish whisky', 'japanese whisky', 'malt whisky', 'scotch whisky', 'wine', 'bilberry wine', 'botrytized wine', 'champagne', 'cider', 'plum wine', 'port wine', 'red wine', 'rose wine', 'sake', 'sherry', 'sparkling wine', 'strawberry wine', 'white wine', 'spirit', 'beverage alcolohic other', 'berry wine', 'vodka', 'vermouth', 'madeira wine']
+    
+
+
+It looks like some entries/categories were made erroneously (see elderberry, cornbread, mixed nuts), a few looked incorrect but were correct (corn salad, or cornsalad, is a type of leafy vegetable), but a lot were made less on its culinary uses, and more to make sure no one category is too large. However, for the most part, I can see why these categories were made.
+
+We're mostly interested in the ingredients list, not in finished products like cornbread, so we'll leave those out.
+
+(Also: woah! [Apparently tobacco is a food.](https://www.scmp.com/magazines/post-magazine/article/1701428/how-cook-using-tobacco-sweet-and-savoury-dishes))
+
+
+```python
+
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>entity id</th>
+      <th>alias</th>
+      <th>synonyms</th>
+      <th>scientific name</th>
+      <th>category</th>
+      <th>molecules</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>863</th>
+      <td>896</td>
+      <td>cupuau</td>
+      <td>{}</td>
+      <td>theobroma grandiflorum</td>
+      <td>fruit</td>
+      <td>{644104, 527, 8723, 31260, 15394, 6184, 439341...</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+

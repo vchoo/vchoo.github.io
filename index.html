@@ -11808,14 +11808,14 @@ div#notebook {
 <li><strong>Process</strong> the JSON data by converting it into a Pandas <code>Dataframe</code>.</li>
 <li><strong>Clean</strong> the <code>DataFrame</code>.</li>
 </ol>
-<h2 id="Steps-1-2:-JSON-Files">Steps 1-2: JSON Files<a class="anchor-link" href="#Steps-1-2:-JSON-Files">&#182;</a></h2><p>A quick inspection of the FlavorDB website reveals that all of the JSON files we want are at <a href="https://cosylab.iiitd.edu.in/flavordb/entities_json?id=x">https://cosylab.iiitd.edu.in/flavordb/entities_json?id=x</a>, where <code>x</code> an integer. Then it's a cinch to write a few functions which go to those addresses and converts those JSON files into dictionaries.</p>
+<h2 id="Steps-1-2:-JSON-Files">Steps 1-2: JSON Files<a class="anchor-link" href="#Steps-1-2:-JSON-Files">&#182;</a></h2><p>A quick inspection of the FlavorDB website reveals that all of the JSON files we want are at <a href="https://cosylab.iiitd.edu.in/flavordb/entities_json?id=x">https://cosylab.iiitd.edu.in/flavordb/entities_json?id=x</a>, where <code>x</code> is an integer. Then it's a cinch to write a few functions which go to those addresses and converts those JSON files into dictionaries.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[39]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># import the relevant Python packages</span>
@@ -11827,6 +11827,8 @@ div#notebook {
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">math</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 </pre></div>
 
 </div>
@@ -11924,7 +11926,6 @@ div#notebook {
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Helps ensure consistent intra-column typing and converts all strings to lowercase.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
     <span class="n">strtype</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
     <span class="n">settype</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="nb">set</span><span class="p">())</span>
     
@@ -11948,7 +11949,10 @@ div#notebook {
         <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">molecules_df</span><span class="p">[</span><span class="s1">&#39;flavor profile&#39;</span><span class="p">]</span>
     <span class="p">]</span>
     
-    <span class="k">return</span> <span class="n">flavor_df</span><span class="p">,</span> <span class="n">molecules_df</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">flavor_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;entity id&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(),</span>
+        <span class="n">molecules_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;pubchem id&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">]</span>
 </pre></div>
 
 </div>
@@ -12160,7 +12164,6 @@ div#notebook {
     <span class="n">df1</span><span class="p">[</span><span class="s1">&#39;flavor profile&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">eval</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">df1</span><span class="p">[</span><span class="s1">&#39;flavor profile&#39;</span><span class="p">]]</span>
     
     <span class="n">df0</span><span class="p">,</span> <span class="n">df1</span> <span class="o">=</span> <span class="n">clean_flavordb_dataframes</span><span class="p">(</span><span class="n">df0</span><span class="p">,</span> <span class="n">df1</span><span class="p">)</span>
-    
     <span class="k">return</span> <span class="n">df0</span><span class="p">,</span> <span class="n">df1</span><span class="p">,</span> <span class="n">missing_entity_ids</span><span class="p">(</span><span class="n">df0</span><span class="p">)</span>
 </pre></div>
 
@@ -12180,7 +12183,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="prompt input_prompt">In&nbsp;[22]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># missing_ids = the missing ids that are less than the max one found</span>
@@ -12200,7 +12203,7 @@ div#notebook {
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[16]:</div>
+<div class="prompt output_prompt">Out[22]:</div>
 
 
 
@@ -12290,7 +12293,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[23]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">molecules_df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
@@ -12306,7 +12309,7 @@ div#notebook {
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[18]:</div>
+<div class="prompt output_prompt">Out[23]:</div>
 
 
 
@@ -12337,33 +12340,33 @@ div#notebook {
   <tbody>
     <tr>
       <th>0</th>
-      <td>22201</td>
-      <td>2,3-Dimethylpyrazine</td>
-      <td>{peanut, peanut butter, butter, cocoa, leather...</td>
+      <td>4</td>
+      <td>1-Aminopropan-2-ol</td>
+      <td>{fishy}</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>31252</td>
-      <td>2,5-Dimethylpyrazine</td>
-      <td>{medicine, roasted nuts, roast beef, woody, co...</td>
+      <td>49</td>
+      <td>3-Methyl-2-oxobutanoic acid</td>
+      <td>{fruity}</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>26331</td>
-      <td>2-Ethylpyrazine</td>
-      <td>{peanut, peanut butter, butter, bitter, woody,...</td>
+      <td>58</td>
+      <td>2-oxobutanoic acid</td>
+      <td>{sweet, creamy, brown, lactonic, caramel}</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>27457</td>
-      <td>2-Ethyl-3-Methylpyrazine</td>
-      <td>{peanut, earthy, roast, hazelnut, corn, potato...</td>
+      <td>70</td>
+      <td>4-Methyl-2-oxovaleric acid</td>
+      <td>{fruity}</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>7976</td>
-      <td>2-Methylpyrazine</td>
-      <td>{peanut, chocolate, green, cocoa, popcorn, roa...</td>
+      <td>72</td>
+      <td>3,4-Dihydroxybenzoic Acid</td>
+      <td>{phenolic, balsamic, mild}</td>
     </tr>
   </tbody>
 </table>
@@ -12378,7 +12381,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[24]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Missing IDs: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">missing_ids</span><span class="p">))</span>
@@ -12411,14 +12414,14 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Exploratory-Data-Analysis">Exploratory Data Analysis<a class="anchor-link" href="#Exploratory-Data-Analysis">&#182;</a></h1><p>Done! Now we have a large database of foods. But how do we know if the database is complete enough? Let's do a preliminary test on how many foods FlavorDB knows.</p>
+<h1 id="Exploratory-Data-Analysis">Exploratory Data Analysis<a class="anchor-link" href="#Exploratory-Data-Analysis">&#182;</a></h1><h2 id="Preliminary-Analysis">Preliminary Analysis<a class="anchor-link" href="#Preliminary-Analysis">&#182;</a></h2><p>Done! Now we have a large database of foods. But how do we know if the database is complete enough? Let's do a preliminary test on how many foods FlavorDB knows.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[25]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">foods</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;caramel&#39;</span><span class="p">,</span> <span class="s1">&#39;urchin&#39;</span><span class="p">,</span> <span class="s1">&#39;liver&#39;</span><span class="p">,</span> <span class="s1">&#39;haggis&#39;</span><span class="p">,</span>
@@ -12441,7 +12444,7 @@ div#notebook {
 
 <div class="output_area">
 
-<div class="prompt output_prompt">Out[13]:</div>
+<div class="prompt output_prompt">Out[25]:</div>
 
 
 
@@ -12475,9 +12478,451 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Hmmm. This database is not exactly complete. While the database certainly includes some uncommon foods like <a href="https://en.wikipedia.org/wiki/Whale_meat">whale</a>, <a href="https://en.wikipedia.org/wiki/Durian">durian</a>, <a href="https://en.wikipedia.org/wiki/Asimina_triloba">paw-paw</a>, and <a href="https://en.wikipedia.org/wiki/Rose#Food_and_drink">rose</a>, it is also missing others such as <a href="https://en.wikipedia.org/wiki/Sea_urchin#As_food">sea urchin</a>, <a href="https://en.wikipedia.org/wiki/Liver_(food">liver</a>), and <a href="https://en.wikipedia.org/wiki/Blood_as_food">blood</a> (see <a href="https://en.wikipedia.org/wiki/Black_pudding">black pudding</a>). In addition, common terms, like <a href="https://en.wikipedia.org/wiki/Whitefish_(fisheries_term">"white fish"</a>), which refers to several species of fish, are left out entirely ("whitefish" refers to a single species of fish).</p>
 <p>Of course, we wouldn't expect this database to have the food compounds of caramel, because even today, the <a href="https://www.scienceofcooking.com/caramelization.htm">process of caramelization</a> is <a href="https://www.exploratorium.edu/cooking/candy/caramels-story.html">extremely complex</a> and <a href="https://bcachemistry.wordpress.com/2014/05/11/the-chemistry-of-caramel/">not well-understood</a>, so <a href="https://chem-net.blogspot.com/2015/04/food-chemistry-caramelization-sugar15.html">complete information on caramel</a> shouldn't be there.</p>
+<p>Now that's out of the way, it's time for analysis and visualizations!</p>
+<h2 id="Similar-Foods">Similar Foods<a class="anchor-link" href="#Similar-Foods">&#182;</a></h2><p>Which foods are most similar to each other? From the previously mentioned <a href="https://www.nature.com/articles/srep00196">Nature article</a>, the mean number of shared compounds per recipe is given by <code>msc()</code>:</p>
 
 </div>
 </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[26]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">get_food</span><span class="p">(</span><span class="n">food_name</span><span class="p">,</span> <span class="n">flavor_df</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">flavor_df</span><span class="p">[[</span>
+        <span class="p">(</span><span class="n">flavor_df</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s1">&#39;alias&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">food_name</span>
+         <span class="ow">or</span> <span class="n">food_name</span> <span class="ow">in</span> <span class="n">flavor_df</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s1">&#39;synonyms&#39;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">flavor_df</span><span class="o">.</span><span class="n">index</span>
+    <span class="p">]]</span>
+
+
+<span class="k">def</span> <span class="nf">get_molecules</span><span class="p">(</span><span class="n">food_name</span><span class="p">,</span> <span class="n">flavor_df</span><span class="p">):</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">get_food</span><span class="p">(</span><span class="n">food_name</span><span class="p">,</span> <span class="n">flavor_df</span><span class="p">)[</span><span class="s1">&#39;molecules&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;food &#39;</span> <span class="o">+</span> <span class="n">food_name</span> <span class="o">+</span> <span class="s1">&#39; has more than one entry&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    
+<span class="k">def</span> <span class="nf">msc</span><span class="p">(</span><span class="n">foods</span><span class="p">,</span> <span class="n">flavor_df</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the mean shared compounds (MSC) for a given recipe (set of foods),</span>
+<span class="sd">    i.e. sum(# shared compounds per 2 foods) / (# of combinations of 2 foods)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">use_index</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;use_index&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">use_index</span><span class="p">:</span>
+        <span class="n">mols</span> <span class="o">=</span> <span class="p">[</span><span class="n">flavor_df</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="s1">&#39;molecules&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">foods</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mols</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_molecules</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">flavor_df</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">foods</span><span class="p">]</span>
+    
+    <span class="n">nr</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">foods</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nr</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nr</span><span class="p">):</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">mols</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">mols</span><span class="p">[</span><span class="n">j</span><span class="p">]))</span>
+    <span class="n">out</span> <span class="o">*=</span> <span class="mf">2.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">nr</span> <span class="o">*</span> <span class="p">(</span><span class="n">nr</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">out</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Since we only have ~1,000 foods in our <code>DataFrame</code>, it's not too expensive to find the MSC between every two foods. Then, we can look for "clusters" of similar foods and ones that very different from one another.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[30]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">len_flavor</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flavor_df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+<span class="n">food_msc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">((</span><span class="n">len_flavor</span><span class="p">,</span> <span class="n">len_flavor</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">len_flavor</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">len_flavor</span><span class="p">):</span>
+        <span class="n">food_msc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">msc</span><span class="p">([</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="n">flavor_df</span><span class="p">,</span> <span class="n">use_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">food_msc</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">food_msc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Now that we have the MSC between all pairs of food, let's see how many compounds foods normally share:</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[41]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">msc_data</span> <span class="o">=</span> <span class="n">food_msc</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">len_flavor</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Average: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">msc_data</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Median: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">msc_data</span><span class="p">)))</span>
+
+<span class="n">fignum</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">msc_data</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">60</span><span class="p">)))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Figure &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">fignum</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;:</span><span class="se">\n</span><span class="s1">Frequency of Mean Shared Compounds&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;mean shared compounds&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">fignum</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Average: 18.9843392719
+Median: 2.0
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+
+
+<div class="output_png output_subarea ">
+<img src="data:image/png;base64,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
+"
+>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>This shouldn't be that surprising; only similar foods (like beef and pork) should have similar compounds in them. The vast majority of foods taste really different from one another!</p>
+<p>But wait - how similar are foods within each category? How similar are they to other categories? What are our categories?</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[47]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">set</span><span class="p">(</span><span class="n">flavor_df</span><span class="p">[</span><span class="s1">&#39;category&#39;</span><span class="p">])</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt output_prompt">Out[47]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>{&#39;additive&#39;,
+ &#39;bakery&#39;,
+ &#39;berry&#39;,
+ &#39;beverage&#39;,
+ &#39;beverage alcoholic&#39;,
+ &#39;beverage caffeinated&#39;,
+ &#39;cabbage&#39;,
+ &#39;cereal&#39;,
+ &#39;dairy&#39;,
+ &#39;dish&#39;,
+ &#39;essential oil&#39;,
+ &#39;fish&#39;,
+ &#39;flower&#39;,
+ &#39;fruit&#39;,
+ &#39;fruit citrus&#39;,
+ &#39;fruit essence&#39;,
+ &#39;fruit-berry&#39;,
+ &#39;fungus&#39;,
+ &#39;gourd&#39;,
+ &#39;herb&#39;,
+ &#39;legume&#39;,
+ &#39;maize&#39;,
+ &#39;meat&#39;,
+ &#39;nut&#39;,
+ &#39;plant&#39;,
+ &#39;plant derivative&#39;,
+ &#39;seafood&#39;,
+ &#39;seed&#39;,
+ &#39;spice&#39;,
+ &#39;vegetable&#39;,
+ &#39;vegetable fruit&#39;,
+ &#39;vegetable root&#39;,
+ &#39;vegetable stem&#39;,
+ &#39;vegetable tuber&#39;}</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Oops. It looks like we still have some more data cleaning to do. What's the difference between a vegetable, fruit, and vegetable fruit? How come cabbage gets its own category?</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[59]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">flavor_df</span><span class="p">[</span><span class="s1">&#39;category&#39;</span><span class="p">]):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">c</span> <span class="o">+</span> <span class="s1">&#39;: &#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">flavor_df</span><span class="p">[</span><span class="n">flavor_df</span><span class="p">[</span><span class="s1">&#39;category&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">c</span><span class="p">][</span><span class="s1">&#39;alias&#39;</span><span class="p">])))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>dish: 
+[&#39;frankfurter sausage&#39;, &#39;ice cream&#39;, &#39;nougat&#39;, &#39;toffee&#39;, &#39;cake&#39;, &#39;pizza&#39;, &#39;other snack food&#39;, &#39;pastry&#39;, &#39;dragée&#39;, &#39;chewing gum&#39;, &#39;marzipan&#39;, &#39;salad dressing&#39;, &#39;sausage&#39;, &#39;meatball&#39;, &#39;pate&#39;, &#39;meat bouillon&#39;, &#39;dumpling&#39;, &#39;soup&#39;, &#39;remoulade&#39;, &#39;fruit gum&#39;, &#39;zwieback&#39;, &#39;snack bar&#39;, &#39;burrito&#39;, &#39;hamburger&#39;, &#39;chili&#39;, &#39;taco&#39;, &#39;tortilla&#39;, &#39;nachos&#39;, &#39;salad&#39;, &#39;egg roll&#39;, &#39;stew&#39;, &#39;falafel&#39;, &#39;frybread&#39;, &#39;other frozen dessert&#39;, &#39;lasagna&#39;, &#39;pancake&#39;, &#39;pudding&#39;, &#39;waffle&#39;, &#39;meatloaf&#39;, &#39;couscous&#39;, &#39;chimichanga&#39;, &#39;tostada&#39;, &#39;quesadilla&#39;, &#39;baked potato&#39;, &#39;hot dog&#39;, &#39;enchilada&#39;, &#39;other sandwich&#39;, &#39;breakfast sandwich&#39;, &#39;adobo&#39;, &#39;macaroni and cheese&#39;, &#39;hushpuppy&#39;, &#39;relish&#39;, &#39;fruit salad&#39;, &#39;vegetarian food&#39;, &#39;cold cut&#39;, &#39;pie&#39;, &#39;soy cream&#39;, &#39;ice cream cone&#39;, &#39;natto&#39;, &#39;ravioli&#39;, &#39;scrapple&#39;, &#39;other pasta dish&#39;, &#39;succotash&#39;, &#39;tamale&#39;, &#39;rice cake&#39;, &#39;akutaq&#39;, &#39;trail mix&#39;, &#39;pupusa&#39;, &#39;empanada&#39;, &#39;arepa&#39;, &#39;gefilte fish&#39;, &#39;fish burger&#39;, &#39;other dish&#39;, &#39;pot pie&#39;, &#39;hummus&#39;, &#39;potato puffs&#39;, &#39;potato gratin&#39;]
+
+flower: 
+[&#39;artichoke&#39;, &#39;champaca&#39;, &#39;jasmine&#39;, &#39;lavendar&#39;, &#39;rose&#39;, &#39;sunflower&#39;, &#39;dandelion&#39;, &#39;garland chrysanthemum&#39;, &#39;sesbania flower&#39;]
+
+fruit-berry: 
+[&#39;elderberry&#39;]
+
+fungus: 
+[&#39;mushroom&#39;, &#39;truffle&#39;, &#39;abalone&#39;, &#34;jew&#39;s ear&#34;, &#39;shiitake&#39;, &#39;enokitake&#39;, &#39;oyster mushroom&#39;, &#39;cloud ear fungus&#39;, &#39;maitake&#39;, &#39;chanterelle&#39;, &#39;morchella&#39;]
+
+plant: 
+[&#39;allium&#39;, &#39;alpinia&#39;, &#39;ceriman&#39;, &#39;chicory&#39;, &#39;hops&#39;, &#39;laurel&#39;, &#39;myrtle&#39;, &#39;olive&#39;, &#39;pine&#39;, &#39;sassafras&#39;, &#39;tea&#39;, &#39;tobacco&#39;, &#39;watercress&#39;, &#39;lupine&#39;, &#39;purslane&#39;, &#39;small leaf linden&#39;, &#39;longan&#39;, &#39;abiyuch&#39;, &#39;bamboo shoots&#39;, &#39;giant butterbur&#39;, &#39;cardoon&#39;, &#39;carob&#39;, &#39;oregon yampah&#39;, &#39;lambsquarters&#39;, &#39;white lupine&#39;, &#39;alpine sweetvetch&#39;, &#39;nopal&#39;, &#39;colorado pinyon&#39;, &#39;french plantain&#39;, &#39;common salsify&#39;, &#39;yautia&#39;, &#39;alaska wild rhubarb&#39;, &#39;rowal&#39;, &#39;ostrich fern&#39;, &#39;agave&#39;, &#39;oil palm&#39;, &#39;sago palm&#39;, &#39;black salsify&#39;, &#39;thistle&#39;, &#39;babassu palm&#39;, &#39;shea tree&#39;, &#39;oil-seed camellia&#39;, &#39;ucuhuba&#39;, &#39;tree fern&#39;, &#39;yellow pond lily&#39;]
+
+cabbage: 
+[&#39;broccoli&#39;, &#39;brussels sprout&#39;, &#39;cabbage&#39;, &#39;cauliflower&#39;, &#39;horseradish&#39;, &#39;mustard&#39;, &#39;kohlrabi&#39;, &#39;wasabi&#39;, &#39;swamp cabbage&#39;, &#39;komatsuna&#39;, &#39;pak choy&#39;, &#39;kai lan&#39;, &#39;rapini&#39;, &#39;kale&#39;, &#39;prairie turnip&#39;, &#39;hedge mustard&#39;]
+
+fruit essence: 
+[&#39;vanilla&#39;]
+
+legume: 
+[&#39;beans&#39;, &#39;lima beans&#39;, &#39;kidney beans&#39;, &#39;peas&#39;, &#39;soybean&#39;, &#39;soybean oil&#39;, &#39;cluster bean&#39;, &#39;pigeon pea&#39;, &#39;chickpea&#39;, &#39;grass pea&#39;, &#39;lentils&#39;, &#39;millet&#39;, &#39;scarlet bean&#39;, &#39;adzuki bean&#39;, &#39;gram bean&#39;, &#39;mung bean&#39;, &#39;climbing bean&#39;, &#39;catjang pea&#39;, &#39;hyacinth bean&#39;, &#39;moth bean&#39;, &#39;winged bean&#39;, &#39;black-eyed pea&#39;, &#39;yardlong bean&#39;]
+
+additive: 
+[&#39;agar&#39;, &#39;spirulina&#39;, &#39;sauce&#39;, &#39;salt&#39;, &#39;sugar&#39;, &#39;sugar substitute&#39;, &#39;casein&#39;, &#39;fruit preserve&#39;, &#39;leavening agent&#39;, &#39;gelatin&#39;, &#39;water&#39;, &#39;syrup&#39;, &#39;miso&#39;, &#39;icing&#39;, &#39;topping&#39;, &#39;gelatin dessert&#39;, &#39;pectin&#39;, &#39;spread&#39;, &#39;ketchup&#39;, &#39;cooking oil&#39;, &#39;shortening&#39;, &#39;molasses&#39;, &#39;stuffing&#39;, &#39;margarine&#39;, &#39;margarine like spread&#39;]
+
+bakery: 
+[&#39;bakery products&#39;, &#39;bread&#39;, &#39;rye bread&#39;, &#39;wheaten bread&#39;, &#39;white bread&#39;, &#39;wholewheat bread&#39;, &#39;fried potato&#39;, &#39;pasta&#39;, &#39;biscuit&#39;, &#39;marshmallow&#39;, &#39;meringue&#39;, &#39;potato chip&#39;, &#39;tortilla chip&#39;, &#39;corn chip&#39;, &#39;phyllo dough&#39;, &#39;pie crust&#39;, &#39;pita bread&#39;, &#39;focaccia&#39;, &#39;bagel&#39;, &#39;other bread product&#39;, &#39;piki bread&#39;, &#39;french toast&#39;, &#39;oat bread&#39;, &#39;potato bread&#39;, &#39;multigrain bread&#39;, &#39;rice bread&#39;, &#39;pan dulce&#39;, &#39;raisin bread&#39;, &#39;wonton wrapper&#39;, &#39;chocolate mousse&#39;, &#39;fudge&#39;, &#39;candy bar&#39;]
+
+vegetable fruit: 
+[&#39;capsicum&#39;, &#39;cherry pepper&#39;, &#39;tomato&#39;, &#39;turkey berry&#39;]
+
+berry: 
+[&#39;sea buckthorns&#39;, &#39;berry&#39;, &#39;bilberry&#39;, &#39;blackberry&#39;, &#39;blueberry&#39;, &#39;cherry&#39;, &#39;bitter cherry&#39;, &#39;sour cherry&#39;, &#39;wild cherry&#39;, &#39;cloudberry&#39;, &#39;cranberry&#39;, &#39;gooseberry&#39;, &#39;lingonberry&#39;, &#39;loganberry&#39;, &#39;raspberry&#39;, &#39;strawberry&#39;, &#39;strawberry jam&#39;, &#39;black crowberry&#39;, &#39;black huckleberry&#39;, &#39;mulberry&#39;, &#39;black mulberry&#39;, &#39;red raspberry&#39;, &#39;black raspberry&#39;, &#39;cherry tomato&#39;, &#39;rowanberry&#39;, &#39;sparkleberry&#39;, &#39;bayberry&#39;, &#34;elliott&#39;s blueberry&#34;, &#39;canada blueberry&#39;, &#39;deerberry&#39;, &#39;jostaberry&#39;, &#39;acerola&#39;, &#39;squashberry&#39;, &#39;groundcherry&#39;, &#39;ohelo berry&#39;, &#39;pitanga&#39;, &#39;salmonberry&#39;, &#39;mexican groundcherry&#39;, &#39;boysenberry&#39;, &#39;chinese bayberry&#39;, &#39;saskatoon berry&#39;, &#39;nanking cherry&#39;]
+
+nut: 
+[&#39;almond&#39;, &#39;brazil nut&#39;, &#39;peanut&#39;, &#39;filbert&#39;, &#39;hazelnut&#39;, &#39;macadamia nut&#39;, &#39;nuts&#39;, &#39;pecans&#39;, &#39;walnut&#39;, &#39;cashew nut&#39;, &#39;chestnut&#39;, &#39;pistachio&#39;, &#39;acorn&#39;, &#39;beech nut&#39;, &#39;butternut&#39;, &#39;chinese chestnut&#39;, &#39;european chestnut&#39;, &#39;ginkgo nuts&#39;, &#39;japanese chestnut&#39;, &#39;pili nut&#39;, &#39;mixed nuts&#39;]
+
+spice: 
+[&#39;anise&#39;, &#39;anise hyssop&#39;, &#39;star anise&#39;, &#39;caraway&#39;, &#39;cardamom&#39;, &#39;cassia&#39;, &#39;celery&#39;, &#39;cinnamon&#39;, &#39;clove&#39;, &#39;cumin&#39;, &#39;ginger&#39;, &#39;mace&#39;, &#39;marjoram&#39;, &#39;nutmeg&#39;, &#39;oregano&#39;, &#39;parsley&#39;, &#39;pepper&#39;, &#39;saffron&#39;, &#39;turmeric&#39;, &#39;allspice&#39;, &#39;asafoetida&#39;, &#39;carom seed&#39;, &#39;jalapeno&#39;, &#39;poppy seed&#39;, &#39;white pepper&#39;]
+
+herb: 
+[&#39;angelica&#39;, &#39;artemisia&#39;, &#39;basil&#39;, &#39;buckwheat&#39;, &#39;calamus&#39;, &#39;chervil&#39;, &#39;coriander&#39;, &#39;cornmint&#39;, &#39;dill&#39;, &#39;fennel&#39;, &#39;fenugreek&#39;, &#39;garlic&#39;, &#39;lemon balm&#39;, &#39;liqourice&#39;, &#39;mint&#39;, &#39;rhubarb&#39;, &#39;rosemary&#39;, &#39;sage&#39;, &#39;spearmint&#39;, &#39;scotch spearmint&#39;, &#39;tarragon&#39;, &#39;thyme&#39;, &#39;peppermint&#39;, &#39;curry leaf&#39;, &#39;silver linden&#39;, &#39;lemon verbena&#39;, &#39;borage&#39;, &#39;capers&#39;, &#39;safflower&#39;, &#39;rocket salad&#39;, &#39;garden cress&#39;, &#39;mexican oregano&#39;, &#39;evening primrose&#39;, &#39;sorrel&#39;, &#39;summer savory&#39;, &#39;winter savory&#39;, &#39;linden&#39;, &#39;common verbena&#39;, &#39;pineappple sage&#39;, &#39;alfalfa&#39;, &#39;amaranth&#39;, &#39;chia&#39;, &#39;dock&#39;, &#39;fireweed&#39;, &#39;american pokeweed&#39;, &#39;roselle&#39;, &#39;teff&#39;, &#39;tea leaf willow&#39;, &#39;epazote&#39;, &#39;sourdock&#39;, &#39;narrowleaf cattail&#39;]
+
+fruit: 
+[&#39;apple&#39;, &#39;apple sauce&#39;, &#39;apricot&#39;, &#39;avocado&#39;, &#39;babaco&#39;, &#39;banana&#39;, &#39;beli&#39;, &#39;byrsonima crassifolia&#39;, &#39;cashew apple&#39;, &#39;cherimoya&#39;, &#39;coconut&#39;, &#39;currant&#39;, &#39;black currant&#39;, &#39;red currant&#39;, &#39;white currant&#39;, &#39;dates&#39;, &#39;durian&#39;, &#39;feijoa&#39;, &#39;fig&#39;, &#39;grape&#39;, &#39;guava&#39;, &#39;hogplum&#39;, &#39;jackfruit&#39;, &#39;kiwifruit&#39;, &#39;litchi&#39;, &#39;loquat&#39;, &#39;malay apple&#39;, &#39;mango&#39;, &#39;melon&#39;, &#39;musk melon&#39;, &#39;naranjilla&#39;, &#39;orange&#39;, &#39;bitter orange&#39;, &#39;papaya&#39;, &#39;mountain papaya&#39;, &#39;passionfruit&#39;, &#39;yellow passionfruit&#39;, &#39;pawpaw&#39;, &#39;peach&#39;, &#39;pear&#39;, &#39;bartlett pear&#39;, &#39;prickly pear&#39;, &#39;pepino&#39;, &#39;pineapple&#39;, &#39;plum&#39;, &#39;plumcot&#39;, &#39;pumpkin&#39;, &#39;quince&#39;, &#39;chinese quince&#39;, &#39;raisin&#39;, &#39;roseapple&#39;, &#39;sapodilla&#39;, &#39;soursop&#39;, &#39;spineless monkey orange&#39;, &#39;starfruit&#39;, &#39;tamarind&#39;, &#39;woodapple&#39;, &#39;pomegranate&#39;, &#39;water chestnut&#39;, &#39;garcinia indica&#39;, &#39;japanese persimmon&#39;, &#39;medlar&#39;, &#39;muscadine grape&#39;, &#39;buffalo currant&#39;, &#39;rambutan&#39;, &#39;skunk currant&#39;, &#39;winter squash&#39;, &#39;breadfruit&#39;, &#39;butternut squash&#39;, &#39;natal plum&#39;, &#39;jujube&#39;, &#39;mammee apple&#39;, &#39;purple mangosteen&#39;, &#39;common persimmon&#39;, &#39;malabar plum&#39;, &#39;rose hip&#39;, &#39;persimmon&#39;, &#39;horned melon&#39;, &#39;cupua\x8du&#39;, &#39;nance&#39;, &#39;japanese pumpkin&#39;]
+
+dairy: 
+[&#39;butter&#39;, &#39;buttermilk&#39;, &#39;cheese&#39;, &#39;blue cheese&#39;, &#39;camembert cheese&#39;, &#39;cheddar cheese&#39;, &#39;comte cheese&#39;, &#39;cottage cheese&#39;, &#39;cream cheese&#39;, &#39;domiati cheese&#39;, &#39;emmental cheese&#39;, &#39;feta cheese&#39;, &#39;goat cheese&#39;, &#39;gruyere cheese&#39;, &#39;limburger cheese&#39;, &#39;mozzarella cheese&#39;, &#39;munster cheese&#39;, &#39;other cheeses&#39;, &#39;parmesan cheese&#39;, &#39;provolone cheese&#39;, &#39;romano cheese&#39;, &#39;roquefort cheese&#39;, &#39;russian cheese&#39;, &#39;sheep cheese&#39;, &#39;swiss cheese&#39;, &#39;tilsit cheese&#39;, &#39;dairy products&#39;, &#39;ghee&#39;, &#39;milk&#39;, &#39;milk fat&#39;, &#39;goat milk&#39;, &#39;milk powder&#39;, &#39;sheep milk&#39;, &#39;skimmed milk&#39;, &#39;yogurt&#39;, &#39;paneer&#39;, &#39;ricotta cheese&#39;, &#39;ymer&#39;, &#39;cream&#39;, &#39;whey&#39;, &#39;milk human&#39;, &#39;kefir&#39;, &#39;other fermented milk&#39;, &#39;dulce de leche&#39;, &#39;sweet custard&#39;, &#39;junket&#39;, &#39;evaporated milk&#39;, &#39;condensed milk&#39;]
+
+seafood: 
+[&#39;clam&#39;, &#39;crab&#39;, &#39;crayfish&#39;, &#39;kelp&#39;, &#39;krill&#39;, &#39;lobster&#39;, &#39;mollusc&#39;, &#39;oyster&#39;, &#39;prawn&#39;, &#39;scallop&#39;, &#39;shellfish&#39;, &#39;shrimp&#39;, &#39;trassi&#39;, &#39;squid&#39;, &#39;red king crab&#39;, &#39;common octopus&#39;, &#39;irish moss&#39;, &#39;leather chiton&#39;, &#39;north pacific giant octopus&#39;, &#39;spotted seal&#39;, &#39;sea cucumber&#39;, &#39;steller sea lion&#39;, &#39;bearded seal&#39;, &#39;ringed seal&#39;, &#39;whelk&#39;, &#39;spiny lobster&#39;, &#39;bivalvia&#39;, &#39;walrus&#39;, &#39;purple laver&#39;, &#39;wakame&#39;, &#39;jellyfish&#39;, &#39;true seal&#39;, &#39;red algae&#39;, &#39;kombu&#39;, &#39;ascidians&#39;]
+
+vegetable stem: 
+[&#39;asparagus&#39;]
+
+beverage caffeinated: 
+[&#39;coffee&#39;, &#39;mate&#39;, &#39;black tea&#39;, &#39;green tea&#39;, &#39;roibos tea&#39;, &#39;arabica coffee&#39;, &#39;coffee mocha&#39;]
+
+fish: 
+[&#39;bonito&#39;, &#39;caviar&#39;, &#39;codfish&#39;, &#39;fish&#39;, &#39;fatty fish&#39;, &#39;lean fish&#39;, &#39;fish oil&#39;, &#39;smoked fish&#39;, &#39;salmon&#39;, &#39;atlantic herring&#39;, &#39;atlantic mackerel&#39;, &#39;painted comber&#39;, &#39;atlantic pollock&#39;, &#39;atlantic wolffish&#39;, &#39;striped bass&#39;, &#39;beluga whale&#39;, &#39;alaska blackfish&#39;, &#39;northern bluefin tuna&#39;, &#39;bluefish&#39;, &#39;bowhead whale&#39;, &#39;burbot&#39;, &#39;american butterfish&#39;, &#39;common carp&#39;, &#39;channel catfish&#39;, &#39;cisco&#39;, &#39;nuttall cockle&#39;, &#39;atlantic croaker&#39;, &#39;cusk&#39;, &#39;cuttlefish&#39;, &#39;devilfish&#39;, &#39;dolphin fish&#39;, &#39;freshwater drum&#39;, &#39;freshwater eel&#39;, &#39;european anchovy&#39;, &#39;turbot&#39;, &#39;florida pompano&#39;, &#39;greenland halibut&#39;, &#39;grouper&#39;, &#39;haddock&#39;, &#39;hippoglossus&#39;, &#39;pacific jack mackerel&#39;, &#39;king mackerel&#39;, &#39;common ling&#39;, &#39;lingcod&#39;, &#39;milkfish&#39;, &#39;monkfish&#39;, &#39;striped mullet&#39;, &#39;ocean pout&#39;, &#39;pacific herring&#39;, &#39;pacific rockfish&#39;, &#39;northern pike&#39;, &#39;rainbow smelt&#39;, &#39;rainbow trout&#39;, &#39;orange roughy&#39;, &#39;sablefish&#39;, &#39;pink salmon&#39;, &#39;chum salmon&#39;, &#39;coho salmon&#39;, &#39;sockeye salmon&#39;, &#39;chinook salmon&#39;, &#39;atlantic salmon&#39;, &#39;spanish mackerel&#39;, &#39;pacific sardine&#39;, &#39;scup&#39;, &#39;sea trout&#39;, &#39;american shad&#39;, &#39;shark&#39;, &#39;sheefish&#39;, &#39;sheepshead&#39;, &#39;snapper&#39;, &#39;greater sturgeon&#39;, &#39;white sucker&#39;, &#39;pumpkinseed sunfish&#39;, &#39;swordfish&#39;, &#39;tilefish&#39;, &#39;salmonidae&#39;, &#39;walleye&#39;, &#39;alaska pollock&#39;, &#39;broad whitefish&#39;, &#39;whitefish&#39;, &#39;whiting&#39;, &#39;yellowfin tuna&#39;, &#39;yellowtail amberjack&#39;, &#39;pollock&#39;, &#39;albacore tuna&#39;, &#39;atlantic halibut&#39;, &#39;smelt&#39;, &#39;clupeinae&#39;, &#39;percoidei&#39;, &#39;perciformes&#39;, &#39;flatfish&#39;, &#39;spot croaker&#39;, &#39;atlantic menhaden&#39;, &#39;anchovy&#39;, &#39;blue whiting&#39;, &#39;carp bream&#39;, &#39;sturgeon&#39;, &#39;charr&#39;, &#39;common dab&#39;, &#39;spiny dogfish&#39;, &#39;anguilliformes&#39;, &#39;garfish&#39;, &#39;gadiformes&#39;, &#39;lake trout&#39;, &#39;lemon sole&#39;, &#39;lumpsucker&#39;, &#39;scombridae&#39;, &#39;norway haddock&#39;, &#39;norway pout&#39;, &#39;pikeperch&#39;, &#39;pleuronectidae&#39;, &#39;pacific ocean perch&#39;, &#39;true sole&#39;, &#39;catfish&#39;, &#39;common tuna&#39;, &#39;cetacea&#39;, &#39;conch&#39;, &#39;other fish product&#39;, &#39;roe&#39;, &#39;cichlidae&#39;]
+
+vegetable: 
+[&#39;green beans&#39;, &#39;chive&#39;, &#39;endive&#39;, &#39;leek&#39;, &#39;lettuce&#39;, &#39;okra&#39;, &#39;onion&#39;, &#39;shallot&#39;, &#39;chard&#39;, &#39;colocasia&#39;, &#39;drumstick leaf&#39;, &#39;eggplant&#39;, &#39;spinach&#39;, &#39;redskin onion&#39;, &#39;burdock&#39;, &#39;pepper c. baccatum&#39;, &#39;pepper c. chinense&#39;, &#39;welsh onion&#39;, &#39;corn salad&#39;, &#39;malabar spinach&#39;, &#39;new zealand spinach&#39;, &#39;heart of palm&#39;, &#39;green zucchini&#39;, &#39;yellow zucchini&#39;]
+
+beverage: 
+[&#39;wort&#39;, &#39;hot chocolate&#39;, &#39;energy drink&#39;, &#39;hibiscus tea&#39;, &#39;soy milk&#39;, &#39;cocktail&#39;, &#39;nutritional drink&#39;, &#39;fruit juice&#39;, &#39;greenthread tea&#39;, &#39;vegetable juice&#39;, &#39;horchata&#39;, &#39;soft drink&#39;, &#39;milkshake&#39;]
+
+fruit citrus: 
+[&#39;bergamot&#39;, &#39;citrus fruits&#39;, &#39;grapefruit&#39;, &#39;kumquat&#39;, &#39;lemon&#39;, &#39;lime&#39;, &#39;mandarin orange&#39;, &#39;satsuma orange&#39;, &#39;tangerine&#39;, &#39;pummelo&#39;]
+
+seed: 
+[&#39;cocoa&#39;, &#39;muskmallow&#39;, &#39;sesame&#39;, &#39;flaxseed&#39;, &#39;nigella seed&#39;]
+
+plant derivative: 
+[&#39;soybean sauce&#39;, &#39;fermented tea&#39;, &#39;creosote&#39;, &#39;honey&#39;, &#39;macaroni&#39;, &#39;mustard oil&#39;, &#39;peanut butter&#39;, &#39;peanut oil&#39;, &#39;storax&#39;, &#39;vinegar&#39;, &#39;apple cider vinegar&#39;, &#39;breadnut tree seed&#39;, &#39;cottonseed&#39;, &#39;jute&#39;, &#39;chocolate spread&#39;, &#39;cocoa butter&#39;, &#39;cocoa powder&#39;, &#39;chocolate&#39;, &#39;tofu&#39;, &#39;soy yogurt&#39;]
+
+vegetable root: 
+[&#39;radish&#39;, &#39;turnip&#39;, &#39;rutabaga&#39;, &#39;beetroot&#39;, &#39;carrot&#39;, &#39;parsnip&#39;, &#39;sweet potato&#39;, &#39;ginseng&#39;]
+
+vegetable tuber: 
+[&#39;cassava&#39;, &#39;potato&#39;, &#39;arrowhead&#39;, &#39;arrowroot&#39;, &#39;jerusalem artichoke&#39;, &#39;mountain yam&#39;, &#39;taro&#39;, &#39;yam&#39;, &#39;jicama&#39;, &#39;tapioca pearl&#39;]
+
+essential oil: 
+[&#39;achilleas&#39;, &#39;arar&#39;, &#39;buchu&#39;, &#39;cajeput&#39;, &#39;camphor&#39;, &#39;cascarilla&#39;, &#39;cedar&#39;, &#39;chamomile&#39;, &#39;citronella&#39;, &#39;citrus peel oil&#39;, &#39;eucalyptus&#39;, &#39;fir&#39;, &#39;geranium&#39;, &#39;grapefruit peel oil&#39;, &#39;grass&#39;, &#39;hops oil&#39;, &#39;hyacinth&#39;, &#39;hyssop oil&#39;, &#39;lemon grass&#39;, &#39;lemon peel oil&#39;, &#39;lime peel oil&#39;, &#39;lovage&#39;, &#39;mandarin orange peel oil&#39;, &#39;mastic gum&#39;, &#39;mentha oil&#39;, &#39;myrrh&#39;, &#39;neroli oil&#39;, &#39;orange oil&#39;, &#39;orris&#39;, &#39;clary sage&#39;, &#39;red sage&#39;, &#39;spanish sage&#39;, &#39;sandalwood&#39;, &#39;sweet grass&#39;, &#39;valerian&#39;, &#39;wattle&#39;, &#39;yarrow&#39;, &#39;ylang-ylang&#39;, &#39;canola oil&#39;, &#39;kenaf&#39;, &#39;lotus&#39;, &#39;kewda&#39;]
+
+gourd: 
+[&#39;chayote&#39;, &#39;cucumber&#39;, &#39;ashgourd&#39;, &#39;bittergourd&#39;, &#39;bottlegourd&#39;, &#39;towel gourd&#39;, &#39;tinda&#39;, &#39;cucurbita&#39;]
+
+maize: 
+[&#39;corn&#39;, &#39;corn oil&#39;, &#39;popcorn&#39;, &#39;sweetcorn&#39;, &#39;cornbread&#39;, &#39;corn grits&#39;]
+
+meat: 
+[&#39;beef&#39;, &#39;beef processed&#39;, &#39;chicken&#39;, &#39;ham&#39;, &#39;lamb&#39;, &#39;meat&#39;, &#39;mutton&#39;, &#39;pork&#39;, &#39;sukiyaki&#39;, &#39;turkey&#39;, &#39;beaver&#39;, &#39;bison&#39;, &#39;black bear&#39;, &#39;wild boar&#39;, &#39;brown bear&#39;, &#39;buffalo&#39;, &#39;caribou&#39;, &#39;mule deer&#39;, &#39;mallard duck&#39;, &#39;elk&#39;, &#39;emu&#39;, &#39;greylag goose&#39;, &#39;horse&#39;, &#39;moose&#39;, &#39;muskrat&#39;, &#39;opossum&#39;, &#39;ostrich&#39;, &#39;pheasant&#39;, &#39;polar bear&#39;, &#39;european rabbit&#39;, &#39;raccoon&#39;, &#39;squab&#39;, &#39;squirrel&#39;, &#39;deer&#39;, &#39;rabbit&#39;, &#39;beefalo&#39;, &#39;great horned owl&#39;, &#39;quail&#39;, &#39;anatidae&#39;, &#39;true frog&#39;, &#39;mountain hare&#39;, &#39;rock ptarmigan&#39;, &#39;snail&#39;, &#39;columbidae&#39;, &#39;other meat product&#39;, &#39;green turtle&#39;, &#39;guinea hen&#39;]
+
+cereal: 
+[&#39;barley&#39;, &#39;crispbread&#39;, &#39;malt&#39;, &#39;oats&#39;, &#39;rice&#39;, &#39;rye&#39;, &#39;basmati rice&#39;, &#39;tartary buckwheat&#39;, &#39;sorghum&#39;, &#39;wheat&#39;, &#39;red rice&#39;, &#39;annual wild rice&#39;, &#39;hard wheat&#39;, &#39;triticale&#39;, &#39;breakfast cereal&#39;, &#39;sourdough&#39;, &#39;quinoa&#39;, &#39;spelt&#39;, &#39;wild rice&#39;, &#39;oriental wheat&#39;, &#39;bulgur&#39;, &#39;semolina&#39;, &#39;flour&#39;]
+
+beverage alcoholic: 
+[&#39;arrack&#39;, &#39;beer&#39;, &#39;bantu beer&#39;, &#39;brandy&#39;, &#39;anise brandy&#39;, &#39;apple brandy&#39;, &#39;armagnac brandy&#39;, &#39;blackberry brandy&#39;, &#39;cherry brandy&#39;, &#39;cognac brandy&#39;, &#39;papaya brandy&#39;, &#39;pear brandy&#39;, &#39;plum brandy&#39;, &#39;raspberry brandy&#39;, &#39;weinbrand brandy&#39;, &#39;gin&#39;, &#39;rum&#39;, &#39;whisky&#39;, &#39;bourbon whisky&#39;, &#39;canadian whisky&#39;, &#39;finnish whisky&#39;, &#39;japanese whisky&#39;, &#39;malt whisky&#39;, &#39;scotch whisky&#39;, &#39;wine&#39;, &#39;bilberry wine&#39;, &#39;botrytized wine&#39;, &#39;champagne&#39;, &#39;cider&#39;, &#39;plum wine&#39;, &#39;port wine&#39;, &#39;red wine&#39;, &#39;rose wine&#39;, &#39;sake&#39;, &#39;sherry&#39;, &#39;sparkling wine&#39;, &#39;strawberry wine&#39;, &#39;white wine&#39;, &#39;spirit&#39;, &#39;beverage alcolohic other&#39;, &#39;berry wine&#39;, &#39;vodka&#39;, &#39;vermouth&#39;, &#39;madeira wine&#39;]
+
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>It looks like some entries/categories were made erroneously (see elderberry, cornbread, mixed nuts), a few looked incorrect but were correct (corn salad, or cornsalad, is a type of leafy vegetable), but a lot were made less on its culinary uses, and more to make sure no one category is too large. However, for the most part, I can see why these categories were made.</p>
+<p>We're mostly interested in the ingredients list, not in finished products like cornbread, so we'll leave those out.</p>
+<p>(Also: woah! <a href="https://www.scmp.com/magazines/post-magazine/article/1701428/how-cook-using-tobacco-sweet-and-savoury-dishes">Apparently tobacco is a food.</a>)</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[60]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span> 
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt output_prompt">Out[60]:</div>
+
+
+
+<div class="output_html rendered_html output_subarea output_execute_result">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>entity id</th>
+      <th>alias</th>
+      <th>synonyms</th>
+      <th>scientific name</th>
+      <th>category</th>
+      <th>molecules</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>863</th>
+      <td>896</td>
+      <td>cupuau</td>
+      <td>{}</td>
+      <td>theobroma grandiflorum</td>
+      <td>fruit</td>
+      <td>{644104, 527, 8723, 31260, 15394, 6184, 439341...</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
 </div>
     </div>
   </div>
