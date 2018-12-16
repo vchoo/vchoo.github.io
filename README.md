@@ -635,172 +635,22 @@ set(flavor_df['category'])
 
 
 
-Oops. It looks like we still have some more data cleaning to do. What's the difference between a vegetable, fruit, and vegetable fruit? How come cabbage gets its own category?
+Oops. It looks like we still have some more data cleaning to do. What's the difference between a vegetable, fruit, and vegetable fruit? How come cabbage gets its own category? Let's take a closer look. If we take a quick glance through the names of *every* food in FlavorDB (output not included), we'll notice a few strange things:
 
 
 ```python
+aliases_by_category = ''
 for c in set(flavor_df['category']):
-    print(c + ': ')
-    print(str(list(flavor_df[flavor_df['category'] == c]['alias'])))
-    print('')
+    aliases_by_category += (
+        c + ': '
+        + str(list(flavor_df[flavor_df['category'] == c]['alias']))
+        + '\n\n'
+    )
+# print(aliases_by_category)
 ```
 
-    dish: 
-    ['frankfurter sausage', 'ice cream', 'nougat', 'toffee', 'cake', 'pizza', 'other snack food', 'pastry', 'dragée', 'chewing gum', 'marzipan', 'salad dressing', 'sausage', 'meatball', 'pate', 'meat bouillon', 'dumpling', 'soup', 'remoulade', 'fruit gum', 'zwieback', 'snack bar', 'burrito', 'hamburger', 'chili', 'taco', 'tortilla', 'nachos', 'salad', 'egg roll', 'stew', 'falafel', 'frybread', 'other frozen dessert', 'lasagna', 'pancake', 'pudding', 'waffle', 'meatloaf', 'couscous', 'chimichanga', 'tostada', 'quesadilla', 'baked potato', 'hot dog', 'enchilada', 'other sandwich', 'breakfast sandwich', 'adobo', 'macaroni and cheese', 'hushpuppy', 'relish', 'fruit salad', 'vegetarian food', 'cold cut', 'pie', 'soy cream', 'ice cream cone', 'natto', 'ravioli', 'scrapple', 'other pasta dish', 'succotash', 'tamale', 'rice cake', 'akutaq', 'trail mix', 'pupusa', 'empanada', 'arepa', 'gefilte fish', 'fish burger', 'other dish', 'pot pie', 'hummus', 'potato puffs', 'potato gratin']
-    
-    flower: 
-    ['artichoke', 'champaca', 'jasmine', 'lavendar', 'rose', 'sunflower', 'dandelion', 'garland chrysanthemum', 'sesbania flower']
-    
-    fruit-berry: 
-    ['elderberry']
-    
-    fungus: 
-    ['mushroom', 'truffle', 'abalone', "jew's ear", 'shiitake', 'enokitake', 'oyster mushroom', 'cloud ear fungus', 'maitake', 'chanterelle', 'morchella']
-    
-    plant: 
-    ['allium', 'alpinia', 'ceriman', 'chicory', 'hops', 'laurel', 'myrtle', 'olive', 'pine', 'sassafras', 'tea', 'tobacco', 'watercress', 'lupine', 'purslane', 'small leaf linden', 'longan', 'abiyuch', 'bamboo shoots', 'giant butterbur', 'cardoon', 'carob', 'oregon yampah', 'lambsquarters', 'white lupine', 'alpine sweetvetch', 'nopal', 'colorado pinyon', 'french plantain', 'common salsify', 'yautia', 'alaska wild rhubarb', 'rowal', 'ostrich fern', 'agave', 'oil palm', 'sago palm', 'black salsify', 'thistle', 'babassu palm', 'shea tree', 'oil-seed camellia', 'ucuhuba', 'tree fern', 'yellow pond lily']
-    
-    cabbage: 
-    ['broccoli', 'brussels sprout', 'cabbage', 'cauliflower', 'horseradish', 'mustard', 'kohlrabi', 'wasabi', 'swamp cabbage', 'komatsuna', 'pak choy', 'kai lan', 'rapini', 'kale', 'prairie turnip', 'hedge mustard']
-    
-    fruit essence: 
-    ['vanilla']
-    
-    legume: 
-    ['beans', 'lima beans', 'kidney beans', 'peas', 'soybean', 'soybean oil', 'cluster bean', 'pigeon pea', 'chickpea', 'grass pea', 'lentils', 'millet', 'scarlet bean', 'adzuki bean', 'gram bean', 'mung bean', 'climbing bean', 'catjang pea', 'hyacinth bean', 'moth bean', 'winged bean', 'black-eyed pea', 'yardlong bean']
-    
-    additive: 
-    ['agar', 'spirulina', 'sauce', 'salt', 'sugar', 'sugar substitute', 'casein', 'fruit preserve', 'leavening agent', 'gelatin', 'water', 'syrup', 'miso', 'icing', 'topping', 'gelatin dessert', 'pectin', 'spread', 'ketchup', 'cooking oil', 'shortening', 'molasses', 'stuffing', 'margarine', 'margarine like spread']
-    
-    bakery: 
-    ['bakery products', 'bread', 'rye bread', 'wheaten bread', 'white bread', 'wholewheat bread', 'fried potato', 'pasta', 'biscuit', 'marshmallow', 'meringue', 'potato chip', 'tortilla chip', 'corn chip', 'phyllo dough', 'pie crust', 'pita bread', 'focaccia', 'bagel', 'other bread product', 'piki bread', 'french toast', 'oat bread', 'potato bread', 'multigrain bread', 'rice bread', 'pan dulce', 'raisin bread', 'wonton wrapper', 'chocolate mousse', 'fudge', 'candy bar']
-    
-    vegetable fruit: 
-    ['capsicum', 'cherry pepper', 'tomato', 'turkey berry']
-    
-    berry: 
-    ['sea buckthorns', 'berry', 'bilberry', 'blackberry', 'blueberry', 'cherry', 'bitter cherry', 'sour cherry', 'wild cherry', 'cloudberry', 'cranberry', 'gooseberry', 'lingonberry', 'loganberry', 'raspberry', 'strawberry', 'strawberry jam', 'black crowberry', 'black huckleberry', 'mulberry', 'black mulberry', 'red raspberry', 'black raspberry', 'cherry tomato', 'rowanberry', 'sparkleberry', 'bayberry', "elliott's blueberry", 'canada blueberry', 'deerberry', 'jostaberry', 'acerola', 'squashberry', 'groundcherry', 'ohelo berry', 'pitanga', 'salmonberry', 'mexican groundcherry', 'boysenberry', 'chinese bayberry', 'saskatoon berry', 'nanking cherry']
-    
-    nut: 
-    ['almond', 'brazil nut', 'peanut', 'filbert', 'hazelnut', 'macadamia nut', 'nuts', 'pecans', 'walnut', 'cashew nut', 'chestnut', 'pistachio', 'acorn', 'beech nut', 'butternut', 'chinese chestnut', 'european chestnut', 'ginkgo nuts', 'japanese chestnut', 'pili nut', 'mixed nuts']
-    
-    spice: 
-    ['anise', 'anise hyssop', 'star anise', 'caraway', 'cardamom', 'cassia', 'celery', 'cinnamon', 'clove', 'cumin', 'ginger', 'mace', 'marjoram', 'nutmeg', 'oregano', 'parsley', 'pepper', 'saffron', 'turmeric', 'allspice', 'asafoetida', 'carom seed', 'jalapeno', 'poppy seed', 'white pepper']
-    
-    herb: 
-    ['angelica', 'artemisia', 'basil', 'buckwheat', 'calamus', 'chervil', 'coriander', 'cornmint', 'dill', 'fennel', 'fenugreek', 'garlic', 'lemon balm', 'liqourice', 'mint', 'rhubarb', 'rosemary', 'sage', 'spearmint', 'scotch spearmint', 'tarragon', 'thyme', 'peppermint', 'curry leaf', 'silver linden', 'lemon verbena', 'borage', 'capers', 'safflower', 'rocket salad', 'garden cress', 'mexican oregano', 'evening primrose', 'sorrel', 'summer savory', 'winter savory', 'linden', 'common verbena', 'pineappple sage', 'alfalfa', 'amaranth', 'chia', 'dock', 'fireweed', 'american pokeweed', 'roselle', 'teff', 'tea leaf willow', 'epazote', 'sourdock', 'narrowleaf cattail']
-    
-    fruit: 
-    ['apple', 'apple sauce', 'apricot', 'avocado', 'babaco', 'banana', 'beli', 'byrsonima crassifolia', 'cashew apple', 'cherimoya', 'coconut', 'currant', 'black currant', 'red currant', 'white currant', 'dates', 'durian', 'feijoa', 'fig', 'grape', 'guava', 'hogplum', 'jackfruit', 'kiwifruit', 'litchi', 'loquat', 'malay apple', 'mango', 'melon', 'musk melon', 'naranjilla', 'orange', 'bitter orange', 'papaya', 'mountain papaya', 'passionfruit', 'yellow passionfruit', 'pawpaw', 'peach', 'pear', 'bartlett pear', 'prickly pear', 'pepino', 'pineapple', 'plum', 'plumcot', 'pumpkin', 'quince', 'chinese quince', 'raisin', 'roseapple', 'sapodilla', 'soursop', 'spineless monkey orange', 'starfruit', 'tamarind', 'woodapple', 'pomegranate', 'water chestnut', 'garcinia indica', 'japanese persimmon', 'medlar', 'muscadine grape', 'buffalo currant', 'rambutan', 'skunk currant', 'winter squash', 'breadfruit', 'butternut squash', 'natal plum', 'jujube', 'mammee apple', 'purple mangosteen', 'common persimmon', 'malabar plum', 'rose hip', 'persimmon', 'horned melon', 'cupua\x8du', 'nance', 'japanese pumpkin']
-    
-    dairy: 
-    ['butter', 'buttermilk', 'cheese', 'blue cheese', 'camembert cheese', 'cheddar cheese', 'comte cheese', 'cottage cheese', 'cream cheese', 'domiati cheese', 'emmental cheese', 'feta cheese', 'goat cheese', 'gruyere cheese', 'limburger cheese', 'mozzarella cheese', 'munster cheese', 'other cheeses', 'parmesan cheese', 'provolone cheese', 'romano cheese', 'roquefort cheese', 'russian cheese', 'sheep cheese', 'swiss cheese', 'tilsit cheese', 'dairy products', 'ghee', 'milk', 'milk fat', 'goat milk', 'milk powder', 'sheep milk', 'skimmed milk', 'yogurt', 'paneer', 'ricotta cheese', 'ymer', 'cream', 'whey', 'milk human', 'kefir', 'other fermented milk', 'dulce de leche', 'sweet custard', 'junket', 'evaporated milk', 'condensed milk']
-    
-    seafood: 
-    ['clam', 'crab', 'crayfish', 'kelp', 'krill', 'lobster', 'mollusc', 'oyster', 'prawn', 'scallop', 'shellfish', 'shrimp', 'trassi', 'squid', 'red king crab', 'common octopus', 'irish moss', 'leather chiton', 'north pacific giant octopus', 'spotted seal', 'sea cucumber', 'steller sea lion', 'bearded seal', 'ringed seal', 'whelk', 'spiny lobster', 'bivalvia', 'walrus', 'purple laver', 'wakame', 'jellyfish', 'true seal', 'red algae', 'kombu', 'ascidians']
-    
-    vegetable stem: 
-    ['asparagus']
-    
-    beverage caffeinated: 
-    ['coffee', 'mate', 'black tea', 'green tea', 'roibos tea', 'arabica coffee', 'coffee mocha']
-    
-    fish: 
-    ['bonito', 'caviar', 'codfish', 'fish', 'fatty fish', 'lean fish', 'fish oil', 'smoked fish', 'salmon', 'atlantic herring', 'atlantic mackerel', 'painted comber', 'atlantic pollock', 'atlantic wolffish', 'striped bass', 'beluga whale', 'alaska blackfish', 'northern bluefin tuna', 'bluefish', 'bowhead whale', 'burbot', 'american butterfish', 'common carp', 'channel catfish', 'cisco', 'nuttall cockle', 'atlantic croaker', 'cusk', 'cuttlefish', 'devilfish', 'dolphin fish', 'freshwater drum', 'freshwater eel', 'european anchovy', 'turbot', 'florida pompano', 'greenland halibut', 'grouper', 'haddock', 'hippoglossus', 'pacific jack mackerel', 'king mackerel', 'common ling', 'lingcod', 'milkfish', 'monkfish', 'striped mullet', 'ocean pout', 'pacific herring', 'pacific rockfish', 'northern pike', 'rainbow smelt', 'rainbow trout', 'orange roughy', 'sablefish', 'pink salmon', 'chum salmon', 'coho salmon', 'sockeye salmon', 'chinook salmon', 'atlantic salmon', 'spanish mackerel', 'pacific sardine', 'scup', 'sea trout', 'american shad', 'shark', 'sheefish', 'sheepshead', 'snapper', 'greater sturgeon', 'white sucker', 'pumpkinseed sunfish', 'swordfish', 'tilefish', 'salmonidae', 'walleye', 'alaska pollock', 'broad whitefish', 'whitefish', 'whiting', 'yellowfin tuna', 'yellowtail amberjack', 'pollock', 'albacore tuna', 'atlantic halibut', 'smelt', 'clupeinae', 'percoidei', 'perciformes', 'flatfish', 'spot croaker', 'atlantic menhaden', 'anchovy', 'blue whiting', 'carp bream', 'sturgeon', 'charr', 'common dab', 'spiny dogfish', 'anguilliformes', 'garfish', 'gadiformes', 'lake trout', 'lemon sole', 'lumpsucker', 'scombridae', 'norway haddock', 'norway pout', 'pikeperch', 'pleuronectidae', 'pacific ocean perch', 'true sole', 'catfish', 'common tuna', 'cetacea', 'conch', 'other fish product', 'roe', 'cichlidae']
-    
-    vegetable: 
-    ['green beans', 'chive', 'endive', 'leek', 'lettuce', 'okra', 'onion', 'shallot', 'chard', 'colocasia', 'drumstick leaf', 'eggplant', 'spinach', 'redskin onion', 'burdock', 'pepper c. baccatum', 'pepper c. chinense', 'welsh onion', 'corn salad', 'malabar spinach', 'new zealand spinach', 'heart of palm', 'green zucchini', 'yellow zucchini']
-    
-    beverage: 
-    ['wort', 'hot chocolate', 'energy drink', 'hibiscus tea', 'soy milk', 'cocktail', 'nutritional drink', 'fruit juice', 'greenthread tea', 'vegetable juice', 'horchata', 'soft drink', 'milkshake']
-    
-    fruit citrus: 
-    ['bergamot', 'citrus fruits', 'grapefruit', 'kumquat', 'lemon', 'lime', 'mandarin orange', 'satsuma orange', 'tangerine', 'pummelo']
-    
-    seed: 
-    ['cocoa', 'muskmallow', 'sesame', 'flaxseed', 'nigella seed']
-    
-    plant derivative: 
-    ['soybean sauce', 'fermented tea', 'creosote', 'honey', 'macaroni', 'mustard oil', 'peanut butter', 'peanut oil', 'storax', 'vinegar', 'apple cider vinegar', 'breadnut tree seed', 'cottonseed', 'jute', 'chocolate spread', 'cocoa butter', 'cocoa powder', 'chocolate', 'tofu', 'soy yogurt']
-    
-    vegetable root: 
-    ['radish', 'turnip', 'rutabaga', 'beetroot', 'carrot', 'parsnip', 'sweet potato', 'ginseng']
-    
-    vegetable tuber: 
-    ['cassava', 'potato', 'arrowhead', 'arrowroot', 'jerusalem artichoke', 'mountain yam', 'taro', 'yam', 'jicama', 'tapioca pearl']
-    
-    essential oil: 
-    ['achilleas', 'arar', 'buchu', 'cajeput', 'camphor', 'cascarilla', 'cedar', 'chamomile', 'citronella', 'citrus peel oil', 'eucalyptus', 'fir', 'geranium', 'grapefruit peel oil', 'grass', 'hops oil', 'hyacinth', 'hyssop oil', 'lemon grass', 'lemon peel oil', 'lime peel oil', 'lovage', 'mandarin orange peel oil', 'mastic gum', 'mentha oil', 'myrrh', 'neroli oil', 'orange oil', 'orris', 'clary sage', 'red sage', 'spanish sage', 'sandalwood', 'sweet grass', 'valerian', 'wattle', 'yarrow', 'ylang-ylang', 'canola oil', 'kenaf', 'lotus', 'kewda']
-    
-    gourd: 
-    ['chayote', 'cucumber', 'ashgourd', 'bittergourd', 'bottlegourd', 'towel gourd', 'tinda', 'cucurbita']
-    
-    maize: 
-    ['corn', 'corn oil', 'popcorn', 'sweetcorn', 'cornbread', 'corn grits']
-    
-    meat: 
-    ['beef', 'beef processed', 'chicken', 'ham', 'lamb', 'meat', 'mutton', 'pork', 'sukiyaki', 'turkey', 'beaver', 'bison', 'black bear', 'wild boar', 'brown bear', 'buffalo', 'caribou', 'mule deer', 'mallard duck', 'elk', 'emu', 'greylag goose', 'horse', 'moose', 'muskrat', 'opossum', 'ostrich', 'pheasant', 'polar bear', 'european rabbit', 'raccoon', 'squab', 'squirrel', 'deer', 'rabbit', 'beefalo', 'great horned owl', 'quail', 'anatidae', 'true frog', 'mountain hare', 'rock ptarmigan', 'snail', 'columbidae', 'other meat product', 'green turtle', 'guinea hen']
-    
-    cereal: 
-    ['barley', 'crispbread', 'malt', 'oats', 'rice', 'rye', 'basmati rice', 'tartary buckwheat', 'sorghum', 'wheat', 'red rice', 'annual wild rice', 'hard wheat', 'triticale', 'breakfast cereal', 'sourdough', 'quinoa', 'spelt', 'wild rice', 'oriental wheat', 'bulgur', 'semolina', 'flour']
-    
-    beverage alcoholic: 
-    ['arrack', 'beer', 'bantu beer', 'brandy', 'anise brandy', 'apple brandy', 'armagnac brandy', 'blackberry brandy', 'cherry brandy', 'cognac brandy', 'papaya brandy', 'pear brandy', 'plum brandy', 'raspberry brandy', 'weinbrand brandy', 'gin', 'rum', 'whisky', 'bourbon whisky', 'canadian whisky', 'finnish whisky', 'japanese whisky', 'malt whisky', 'scotch whisky', 'wine', 'bilberry wine', 'botrytized wine', 'champagne', 'cider', 'plum wine', 'port wine', 'red wine', 'rose wine', 'sake', 'sherry', 'sparkling wine', 'strawberry wine', 'white wine', 'spirit', 'beverage alcolohic other', 'berry wine', 'vodka', 'vermouth', 'madeira wine']
-    
+It looks like some entries/categories were made erroneously (see elderberry, cornbread, mixed nuts). A few looked incorrect but were correct (corn salad, or cornsalad, is a type of leafy vegetable), but a lot were seemed like they were sorted to make sure no one category is too large. However, I can see signficant differences in flavor between categories.
 
-
-It looks like some entries/categories were made erroneously (see elderberry, cornbread, mixed nuts), a few looked incorrect but were correct (corn salad, or cornsalad, is a type of leafy vegetable), but a lot were made less on its culinary uses, and more to make sure no one category is too large. However, for the most part, I can see why these categories were made.
-
-We're mostly interested in the ingredients list, not in finished products like cornbread, so we'll leave those out.
+We're mostly interested in the ingredients list, not in finished products like cornbread, so we'll keep only raw ingredients, and remove a few outliers.
 
 (Also: woah! [Apparently tobacco is a food.](https://www.scmp.com/magazines/post-magazine/article/1701428/how-cook-using-tobacco-sweet-and-savoury-dishes))
-
-
-```python
-
-```
-
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>entity id</th>
-      <th>alias</th>
-      <th>synonyms</th>
-      <th>scientific name</th>
-      <th>category</th>
-      <th>molecules</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>863</th>
-      <td>896</td>
-      <td>cupuau</td>
-      <td>{}</td>
-      <td>theobroma grandiflorum</td>
-      <td>fruit</td>
-      <td>{644104, 527, 8723, 31260, 15394, 6184, 439341...</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
